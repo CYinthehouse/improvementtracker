@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Improvement Tracker - Korean Learning Progress</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .upload-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .file-input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .file-input-label {
+            background: white;
+            border: 2px dashed #667eea;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #667eea;
+        }
+
+        .file-input-label:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .process-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .process-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .download-section {
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .download-btn {
+            background: white;
+            color: #11998e;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .download-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .download-all-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .download-status {
+            color: white;
+            font-weight: 500;
+            display: none;
+        }
+
+        .student-tabs {
+            display: flex;
+            padding: 20px 30px 0;
+            gap: 10px;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .student-tab {
+            padding: 12px 24px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .student-tab.active {
+            background: white;
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .student-tab:hover:not(.active) {
+            background: #e8e9ea;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .student-report {
+            display: none;
+        }
+
+        .student-report.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: 300;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .change {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stat-card.positive {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .stat-card.negative {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            position: relative;
+            max-height: 450px;
+            overflow: hidden;
+        }
+        
+        .chart-container canvas {
+            max-height: 400px !important;
+            height: auto !important;
+        }
+
+        .chart-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 300;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-title .emoji {
+            font-size: 1.2em;
+        }
+        
+        /* Ensure canvases don't exceed their containers */
+        canvas {
+            display: block !important;
+            box-sizing: border-box !important;
+            height: 100% !important;
+            width: 100% !important;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .charts-grid .chart-container {
+            height: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            flex: 1;
+            min-height: 250px;
+            max-height: 300px;
+        }
+
+        @media (max-width: 968px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .charts-grid .chart-container {
+                height: 300px;
+            }
+            
+            .chart-wrapper {
+                max-height: 250px;
+            }
+        }
+
+        .details-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+
+        .details-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .character-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .character-card.mastered {
+            border-color: #38ef7d;
+            background: linear-gradient(135deg, rgba(17, 153, 142, 0.05) 0%, rgba(56, 239, 125, 0.05) 100%);
+        }
+
+        .character-card.needs-work {
+            border-color: #f45c43;
+            background: linear-gradient(135deg, rgba(235, 51, 73, 0.05) 0%, rgba(244, 92, 67, 0.05) 100%);
+        }
+
+        .character-card.improving {
+            border-color: #ffa500;
+            background: linear-gradient(135deg, rgba(255, 165, 0, 0.05) 0%, rgba(255, 200, 0, 0.05) 100%);
+        }
+
+        .character-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .character-name {
+            font-size: 2em;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .character-progress {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .character-improvement {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .improvement-positive {
+            color: #38ef7d;
+        }
+
+        .improvement-negative {
+            color: #f45c43;
+        }
+
+        .comparison-section {
+            padding: 30px;
+            background: white;
+            display: none;
+        }
+
+        .comparison-section.active {
+            display: block;
+        }
+
+        #loadingMessage {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-size: 1.1em;
+            display: none;
+        }
+
+        .spinner {
+            border: 3px solid rgba(102, 126, 234, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #667eea;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .report-capture {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            width: 1920px;
+            background: white;
+            padding: 40px;
+        }
+
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .report-header h1 {
+            margin: 0;
+            font-size: 2em;
+            font-weight: 300;
+        }
+
+        .report-header .date {
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Korean Learning Progress Tracker</h1>
+            <div class="subtitle">Comprehensive Student Improvement Analytics</div>
+        </div>
+
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <label for="fileInput" class="file-input-label">
+                    📂 Choose CSV Files (Max 10)
+                </label>
+                <input type="file" id="fileInput" multiple accept=".csv">
+                <button id="processBtn" class="process-btn" onclick="processFiles()">
+                    🚀 Analyze Progress
+                </button>
+            </div>
+            <div id="loadingMessage">
+                <div class="spinner"></div>
+                Processing student data...
+            </div>
+        </div>
+
+        <div class="student-tabs" id="studentTabs"></div>
+        
+        <div class="content" id="content">
+            <div id="reportsContainer"></div>
+            <div id="comparisonSection" class="comparison-section"></div>
+        </div>
+    </div>
+
+    <script>
+        let studentsData = {};
+        let currentStudent = null;
+        let chartInstances = {
+            progress: null,
+            improvement: null,
+            heatmap: null,
+            mastery: null,
+            comparisonProgress: null,
+            comparisonImprovement: null,
+            comparisonMastery: null
+        };
+
+        // Sample data for Bob (will be replaced when files are uploaded)
+        const bobData = {
+            name: 'Bob',
+            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+            characters: ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'ㅉ', 'ㄲ', 'ㄸ', 'ㅃ'],
+            scores: {
+                'ㄱ': [33.33, 33.33, 100, 100, 100],
+                'ㄴ': [33.33, 66.67, 100, 100, 100],
+                'ㄷ': [33.33, 33.33, 100, 100, 100],
+                'ㄹ': [33.33, 66.67, 66.67, 100, 100],
+                'ㅁ': [33.33, 33.33, 66.67, 100, 100],
+                'ㅂ': [33.33, 66.67, 66.67, 100, 100],
+                'ㅅ': [33.33, 66.67, 66.67, 100, 100],
+                'ㅆ': [33.33, 66.67, 66.67, 100, 100],
+                'ㅇ': [33.33, 33.33, 100, 100, 100],
+                'ㅈ': [33.33, 66.67, 100, 100, 100],
+                'ㅊ': [33.33, 33.33, 66.67, 100, 100],
+                'ㅋ': [33.33, 33.33, 100, 66.67, 100],
+                'ㅌ': [33.33, 66.67, 66.67, 66.67, 100],
+                'ㅍ': [33.33, 66.67, 100, 66.67, 100],
+                'ㅎ': [33.33, 33.33, 100, 66.67, 100],
+                'ㅉ': [33.33, 66.67, 100, 100, 100],
+                'ㄲ': [33.33, 33.33, 100, 100, 100],
+                'ㄸ': [33.33, 66.67, 100, 100, 100],
+                'ㅃ': [33.33, 33.33, 100, 100, 100]
+            }
+        };
+
+        // Initialize with Bob's data
+        window.onload = function() {
+            try {
+                studentsData['Bob'] = processStudentData(bobData);
+                displayStudentTabs();
+                
+                // Use requestAnimationFrame to ensure DOM is ready
+                requestAnimationFrame(() => {
+                    showStudent('Bob');
+                });
+            } catch (error) {
+                console.error('Error initializing with Bob data:', error);
+            }
+        };
+        
+        // Global function to test download
+        window.testDownload = function() {
+            if (currentStudent && studentsData[currentStudent]) {
+                downloadStudentReport(currentStudent);
+            } else {
+                alert('No student selected');
+            }
+        };
+
+        function processFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            
+            if (files.length === 0) {
+                alert('Please select at least one CSV file');
+                return;
+            }
+            
+            if (files.length > 10) {
+                alert('Maximum 10 files allowed');
+                return;
+            }
+
+            document.getElementById('loadingMessage').style.display = 'block';
+            document.getElementById('processBtn').disabled = true;
+            
+            // Clear existing data (except Bob if no files were selected)
+            studentsData = {};
+            
+            let filesProcessed = 0;
+            let successfulFiles = 0;
+            
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    Papa.parse(e.target.result, {
+                        complete: function(results) {
+                            const studentData = parseCSVData(results.data, file.name);
+                            if (studentData) {
+                                const processedData = processStudentData(studentData);
+                                if (processedData) {
+                                    studentsData[studentData.name] = processedData;
+                                    successfulFiles++;
+                                }
+                            }
+                            
+                            filesProcessed++;
+                            if (filesProcessed === files.length) {
+                                document.getElementById('loadingMessage').style.display = 'none';
+                                document.getElementById('processBtn').disabled = false;
+                                
+                                if (successfulFiles === 0) {
+                                    alert('No valid CSV files could be processed. Please check your file format.');
+                                    return;
+                                }
+                                
+                                displayStudentTabs();
+                                if (Object.keys(studentsData).length > 0) {
+                                    showStudent(Object.keys(studentsData)[0]);
+                                    if (Object.keys(studentsData).length > 1) {
+                                        // Only show comparison if we have multiple students
+                                        setTimeout(() => {
+                                            const comparisonTab = document.querySelector('.student-tab:last-child');
+                                            if (comparisonTab && comparisonTab.textContent.includes('Comparison')) {
+                                                comparisonTab.style.display = 'block';
+                                            }
+                                        }, 100);
+                                    }
+                                }
+                            }
+                        },
+                        error: function(error) {
+                            console.error(`Error parsing ${file.name}:`, error);
+                            filesProcessed++;
+                            if (filesProcessed === files.length) {
+                                document.getElementById('loadingMessage').style.display = 'none';
+                                document.getElementById('processBtn').disabled = false;
+                            }
+                        }
+                    });
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        function parseCSVData(data, filename) {
+            try {
+                // Extract student name from filename
+                let studentName = filename.replace('.csv', '').replace('Student_improvement_Metric_-_', '').replace('Student_Improvement_Metric_-_', '');
+                
+                // Validate data structure
+                if (!data || data.length < 3) {
+                    console.error(`Invalid CSV structure for ${filename}`);
+                    return null;
+                }
+                
+                // Parse the CSV data
+                const days = data[0].slice(1).filter(d => d && d.trim() !== '');
+                
+                if (days.length === 0) {
+                    console.error(`No days found in ${filename}`);
+                    return null;
+                }
+                
+                const characters = [];
+                const scores = {};
+                
+                for (let i = 2; i < data.length; i++) {
+                    if (data[i] && data[i][0] && data[i][0].trim() !== '') {
+                        const char = data[i][0].trim();
+                        characters.push(char);
+                        scores[char] = [];
+                        
+                        for (let j = 1; j <= days.length; j++) {
+                            const gradeStr = data[i][j];
+                            if (gradeStr && gradeStr.includes('Grade:')) {
+                                const parts = gradeStr.replace('Grade: ', '').split('/');
+                                if (parts.length === 2) {
+                                    const percentage = (parseInt(parts[0]) / parseInt(parts[1])) * 100;
+                                    scores[char].push(percentage);
+                                } else {
+                                    scores[char].push(0);
+                                }
+                            } else {
+                                scores[char].push(0);
+                            }
+                        }
+                    }
+                }
+                
+                if (characters.length === 0) {
+                    console.error(`No characters found in ${filename}`);
+                    return null;
+                }
+                
+                return {
+                    name: studentName,
+                    days: days,
+                    characters: characters,
+                    scores: scores
+                };
+            } catch (error) {
+                console.error(`Error parsing ${filename}:`, error);
+                return null;
+            }
+        }
+
+        function processStudentData(studentData) {
+            const processed = {
+                ...studentData,
+                dailyAverages: [],
+                characterImprovements: {},
+                statistics: {}
+            };
+            
+            // Calculate daily averages
+            for (let i = 0; i < studentData.days.length; i++) {
+                let daySum = 0;
+                let count = 0;
+                for (let char of studentData.characters) {
+                    if (studentData.scores[char] && studentData.scores[char][i] !== undefined) {
+                        daySum += studentData.scores[char][i];
+                        count++;
+                    }
+                }
+                processed.dailyAverages.push(count > 0 ? daySum / count : 0);
+            }
+            
+            // Calculate improvements for each character
+            for (let char of studentData.characters) {
+                const scores = studentData.scores[char];
+                if (scores && scores.length > 0) {
+                    const startScore = scores[0];
+                    const endScore = scores[scores.length - 1];
+                    processed.characterImprovements[char] = {
+                        start: startScore,
+                        end: endScore,
+                        improvement: endScore - startScore,
+                        mastered: endScore === 100,
+                        scores: scores // Keep all scores for reference
+                    };
+                }
+            }
+            
+            // Calculate statistics
+            const startAvg = processed.dailyAverages[0] || 0;
+            const endAvg = processed.dailyAverages[processed.dailyAverages.length - 1] || 0;
+            const totalImprovement = endAvg - startAvg;
+            const masteredCount = Object.values(processed.characterImprovements).filter(c => c.mastered).length;
+            
+            // Find characters needing work
+            const needsWork = Object.entries(processed.characterImprovements)
+                .filter(([char, data]) => !data.mastered)
+                .map(([char, data]) => ({char, ...data}))
+                .sort((a, b) => a.end - b.end);
+            
+            // Find best improvements
+            const bestImprovements = Object.entries(processed.characterImprovements)
+                .map(([char, data]) => ({char, ...data}))
+                .sort((a, b) => b.improvement - a.improvement)
+                .slice(0, 5);
+            
+            processed.statistics = {
+                startAverage: startAvg,
+                endAverage: endAvg,
+                totalImprovement: totalImprovement,
+                masteredCount: masteredCount,
+                totalCharacters: studentData.characters.length,
+                masteryRate: (masteredCount / studentData.characters.length * 100),
+                needsWork: needsWork,
+                bestImprovements: bestImprovements
+            };
+            
+            return processed;
+        }
+
+        function displayStudentTabs() {
+            const tabsContainer = document.getElementById('studentTabs');
+            tabsContainer.innerHTML = '';
+            
+            Object.keys(studentsData).forEach((studentName, index) => {
+                const tab = document.createElement('button');
+                tab.className = 'student-tab';
+                tab.textContent = studentName;
+                tab.onclick = () => showStudent(studentName);
+                tabsContainer.appendChild(tab);
+            });
+            
+            if (Object.keys(studentsData).length > 1) {
+                const comparisonTab = document.createElement('button');
+                comparisonTab.className = 'student-tab';
+                comparisonTab.textContent = '📊 Comparison';
+                comparisonTab.onclick = showComparison;
+                tabsContainer.appendChild(comparisonTab);
+            }
+        }
+
+        function showStudent(studentName) {
+            currentStudent = studentName;
+            const data = studentsData[studentName];
+            
+            // Update tabs
+            document.querySelectorAll('.student-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent === studentName);
+            });
+            
+            // Hide comparison section
+            document.getElementById('comparisonSection').classList.remove('active');
+            
+            // Create or update student report
+            const reportsContainer = document.getElementById('reportsContainer');
+            reportsContainer.innerHTML = generateStudentReport(data);
+            
+            // Attach download button event listeners
+            setTimeout(() => {
+                const downloadBtn = document.getElementById(`downloadBtn_${studentName.replace(/\s+/g, '_')}`);
+                if (downloadBtn) {
+                    downloadBtn.onclick = function() {
+                        downloadStudentReport(studentName);
+                    };
+                }
+                
+                const downloadAllBtn = document.getElementById('downloadAllBtn');
+                if (downloadAllBtn) {
+                    downloadAllBtn.onclick = function() {
+                        downloadAllReports();
+                    };
+                }
+            }, 10);
+            
+            // Wait for DOM to be ready, then create charts
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    // Check if canvas elements exist before creating charts
+                    if (document.getElementById('progressChart')) {
+                        createProgressChart(data);
+                    }
+                    if (document.getElementById('improvementChart')) {
+                        createImprovementChart(data);
+                    }
+                    if (document.getElementById('heatmapChart')) {
+                        createHeatmapChart(data);
+                    }
+                    if (document.getElementById('masteryChart')) {
+                        createMasteryChart(data);
+                    }
+                }, 50);
+            });
+        }
+
+        function generateStudentReport(data) {
+            const stats = data.statistics;
+            
+            return `
+                <div class="student-report active" data-student="${data.name}">
+                    <div class="download-section">
+                        <div>
+                            <strong style="color: white; font-size: 1.1em;">📊 Export Options</strong>
+                            <span style="color: rgba(255,255,255,0.9); margin-left: 10px;">Download report as image</span>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="download-btn" id="downloadBtn_${data.name.replace(/\s+/g, '_')}">
+                                📥 Download ${data.name}'s Report
+                            </button>
+                            ${Object.keys(studentsData).length > 1 ? `
+                                <button class="download-btn download-all-btn" id="downloadAllBtn">
+                                    📦 Download All Reports
+                                </button>
+                            ` : ''}
+                        </div>
+                        <div class="download-status" id="downloadStatus">
+                            Preparing download...
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="label">Starting Average</div>
+                            <div class="value">${stats.startAverage.toFixed(1)}%</div>
+                            <div class="change">Day 1 Baseline</div>
+                        </div>
+                        
+                        <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
+                            <div class="label">Final Average</div>
+                            <div class="value">${stats.endAverage.toFixed(1)}%</div>
+                            <div class="change">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)}% Total</div>
+                        </div>
+                        
+                        <div class="stat-card positive">
+                            <div class="label">Characters Mastered</div>
+                            <div class="value">${stats.masteredCount}/${stats.totalCharacters}</div>
+                            <div class="change">${stats.masteryRate.toFixed(1)}% Mastery Rate</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="label">Weekly Improvement</div>
+                            <div class="value">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)}%</div>
+                            <div class="change">From Day 1 to Day 5</div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <div class="chart-title">
+                                <span class="emoji">📈</span>
+                                Weekly Progress Overview
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="progressChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <div class="chart-title">
+                                <span class="emoji">🎯</span>
+                                Character Improvements
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="improvementChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container" style="height: 400px;">
+                        <div class="chart-title">
+                            <span class="emoji">🗓️</span>
+                            Daily Performance Heatmap
+                        </div>
+                        <div style="position: relative; height: 320px;">
+                            <canvas id="heatmapChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container" style="height: 350px;">
+                        <div class="chart-title">
+                            <span class="emoji">✅</span>
+                            Mastery Timeline
+                        </div>
+                        <div style="position: relative; height: 270px;">
+                            <canvas id="masteryChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="details-section">
+                        <div class="details-title">📊 Detailed Character Analysis</div>
+                        <div class="character-grid">
+                            ${generateCharacterCards(data)}
+                        </div>
+                    </div>
+                    
+                    <div class="details-section">
+                        <div class="details-title">💡 Key Insights & Recommendations</div>
+                        ${generateInsights(data)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateCharacterCards(data) {
+            return data.characters.map(char => {
+                const improvement = data.characterImprovements[char];
+                let statusClass = '';
+                if (improvement.mastered) {
+                    statusClass = 'mastered';
+                } else if (improvement.improvement > 0) {
+                    statusClass = 'improving';
+                } else {
+                    statusClass = 'needs-work';
+                }
+                
+                const improvementValue = improvement.improvement;
+                const startValue = improvement.start;
+                const endValue = improvement.end;
+                
+                return `
+                    <div class="character-card ${statusClass}">
+                        <div class="character-name">${char}</div>
+                        <div class="character-progress">
+                            ${startValue.toFixed(0)}% → ${endValue.toFixed(0)}%
+                        </div>
+                        <div class="character-improvement ${improvementValue >= 0 ? 'improvement-positive' : 'improvement-negative'}">
+                            ${improvementValue >= 0 ? '+' : ''}${improvementValue.toFixed(0)}%
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function generateInsights(data) {
+            const stats = data.statistics;
+            const insights = [];
+            
+            // Overall performance insight
+            if (stats.totalImprovement >= 50) {
+                insights.push('🌟 <strong>Excellent Progress!</strong> The student showed remarkable improvement of over 50% this week.');
+            } else if (stats.totalImprovement >= 30) {
+                insights.push('✅ <strong>Good Progress!</strong> Solid improvement shown throughout the week.');
+            } else {
+                insights.push('📚 <strong>Steady Progress.</strong> Consider additional practice for better results.');
+            }
+            
+            // Mastery insight
+            if (stats.masteryRate === 100) {
+                insights.push('🎉 <strong>Perfect Mastery!</strong> All characters have been mastered to 100%.');
+            } else if (stats.masteryRate >= 80) {
+                insights.push(`🎯 <strong>High Mastery Rate!</strong> ${stats.masteredCount} out of ${stats.totalCharacters} characters mastered.`);
+            } else {
+                insights.push(`📖 <strong>Focus on Mastery:</strong> ${stats.totalCharacters - stats.masteredCount} characters still need work to reach 100%.`);
+            }
+            
+            // Characters needing attention
+            if (stats.needsWork.length > 0) {
+                const topNeedsWork = stats.needsWork.slice(0, 3).map(c => c.char).join(', ');
+                insights.push(`⚠️ <strong>Priority Focus Areas:</strong> ${topNeedsWork} need additional attention (currently below mastery).`);
+            }
+            
+            // Best improvements
+            if (stats.bestImprovements.length > 0) {
+                const topImprovers = stats.bestImprovements.slice(0, 3).map(c => `${c.char} (+${c.improvement.toFixed(0)}%)`).join(', ');
+                insights.push(`🚀 <strong>Best Improvements:</strong> ${topImprovers}`);
+            }
+            
+            // Daily improvement rate
+            const dailyRate = stats.totalImprovement / (data.days.length - 1);
+            insights.push(`📈 <strong>Average Daily Improvement:</strong> ${dailyRate.toFixed(1)}% per day`);
+            
+            // Recommendations
+            insights.push('<br><strong>📝 Recommendations:</strong>');
+            if (stats.masteryRate < 100) {
+                insights.push(`• Focus additional practice on: ${stats.needsWork.slice(0, 5).map(c => c.char).join(', ')}`);
+            }
+            if (stats.totalImprovement < 30) {
+                insights.push('• Consider increasing daily practice time or adjusting learning methodology');
+            }
+            if (stats.masteryRate >= 80) {
+                insights.push('• Maintain current learning pace and introduce more advanced material');
+            }
+            
+            return `<div style="line-height: 1.8;">${insights.join('<br>')}</div>`;
+        }
+
+        function createProgressChart(data) {
+            const canvas = document.getElementById('progressChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (chartInstances.progress) {
+                chartInstances.progress.destroy();
+            }
+            
+            chartInstances.progress = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.days,
+                    datasets: [{
+                        label: 'Average Score',
+                        data: data.dailyAverages,
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: 'white',
+                        pointBorderColor: 'rgb(102, 126, 234)',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: 10
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Average: ' + context.parsed.y.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createImprovementChart(data) {
+            const canvas = document.getElementById('improvementChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (chartInstances.improvement) {
+                chartInstances.improvement.destroy();
+            }
+            
+            const topImprovements = Object.entries(data.characterImprovements)
+                .sort((a, b) => b[1].improvement - a[1].improvement)
+                .slice(0, 10);
+            
+            chartInstances.improvement = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topImprovements.map(([char, _]) => char),
+                    datasets: [{
+                        label: 'Improvement',
+                        data: topImprovements.map(([_, data]) => data.improvement),
+                        backgroundColor: topImprovements.map(([_, data]) => 
+                            data.mastered ? 'rgba(56, 239, 125, 0.8)' : 'rgba(255, 165, 0, 0.8)'
+                        ),
+                        borderColor: topImprovements.map(([_, data]) => 
+                            data.mastered ? 'rgb(56, 239, 125)' : 'rgb(255, 165, 0)'
+                        ),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: 10
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '+' + value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Improvement: +' + context.parsed.y.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createHeatmapChart(data) {
+            const canvas = document.getElementById('heatmapChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (chartInstances.heatmap) {
+                chartInstances.heatmap.destroy();
+            }
+            
+            const datasets = data.characters.map((char, charIndex) => {
+                return {
+                    label: char,
+                    data: data.days.map((day, dayIndex) => ({
+                        x: dayIndex,
+                        y: charIndex,
+                        v: data.scores[char][dayIndex]
+                    })),
+                    backgroundColor: function(context) {
+                        const value = context.dataset.data[context.dataIndex].v;
+                        if (value === 100) return 'rgba(56, 239, 125, 0.8)';
+                        if (value >= 66) return 'rgba(255, 200, 0, 0.8)';
+                        return 'rgba(244, 92, 67, 0.8)';
+                    },
+                    borderWidth: 1,
+                    borderColor: 'white'
+                };
+            });
+            
+            chartInstances.heatmap = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    labels: data.days,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: data.days,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            type: 'category',
+                            labels: data.characters,
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const char = data.characters[context.parsed.y];
+                                    const day = data.days[context.parsed.x];
+                                    const score = context.raw.v;
+                                    return `${char} on ${day}: ${score.toFixed(0)}%`;
+                                }
+                            }
+                        }
+                    },
+                    elements: {
+                        point: {
+                            radius: 15,
+                            hoverRadius: 18
+                        }
+                    }
+                }
+            });
+        }
+
+        function createMasteryChart(data) {
+            const canvas = document.getElementById('masteryChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (chartInstances.mastery) {
+                chartInstances.mastery.destroy();
+            }
+            
+            const masteredPerDay = data.days.map((day, dayIndex) => {
+                return data.characters.filter(char => 
+                    data.scores[char][dayIndex] === 100
+                ).length;
+            });
+            
+            const cumulativeMastered = masteredPerDay.reduce((acc, val, i) => {
+                if (i === 0) return [val];
+                const cumulative = Math.max(acc[i-1], val);
+                return [...acc, cumulative];
+            }, []);
+            
+            chartInstances.mastery = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.days,
+                    datasets: [{
+                        type: 'bar',
+                        label: 'Characters at 100%',
+                        data: masteredPerDay,
+                        backgroundColor: 'rgba(56, 239, 125, 0.5)',
+                        borderColor: 'rgb(56, 239, 125)',
+                        borderWidth: 2
+                    }, {
+                        type: 'line',
+                        label: 'Cumulative Mastery',
+                        data: cumulativeMastered,
+                        borderColor: 'rgb(235, 51, 73)',
+                        backgroundColor: 'rgba(235, 51, 73, 0.1)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: 'white',
+                        pointBorderColor: 'rgb(235, 51, 73)',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: data.characters.length,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function showComparison() {
+            // Update tabs
+            document.querySelectorAll('.student-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent.includes('Comparison'));
+            });
+            
+            // Hide individual reports
+            document.getElementById('reportsContainer').innerHTML = '';
+            
+            // Show comparison section
+            const comparisonSection = document.getElementById('comparisonSection');
+            comparisonSection.classList.add('active');
+            comparisonSection.innerHTML = generateComparisonReport();
+            
+            // Create comparison charts with proper timing
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if (document.getElementById('comparisonProgressChart')) {
+                        createComparisonProgressChart();
+                    }
+                    if (document.getElementById('comparisonImprovementChart')) {
+                        createComparisonImprovementChart();
+                    }
+                    if (document.getElementById('comparisonMasteryChart')) {
+                        createComparisonMasteryChart();
+                    }
+                }, 50);
+            });
+        }
+
+        function generateComparisonReport() {
+            const students = Object.values(studentsData);
+            
+            // Sort students by total improvement
+            const sortedStudents = students.sort((a, b) => 
+                b.statistics.totalImprovement - a.statistics.totalImprovement
+            );
+            
+            return `
+                <div class="chart-container" style="height: 400px;">
+                    <div class="chart-title">
+                        <span class="emoji">📊</span>
+                        Class Comparison Overview
+                    </div>
+                    <div style="position: relative; height: 320px;">
+                        <canvas id="comparisonProgressChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">
+                            <span class="emoji">🏆</span>
+                            Total Improvement Ranking
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="comparisonImprovementChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-title">
+                            <span class="emoji">✅</span>
+                            Mastery Rate Comparison
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="comparisonMasteryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="details-section">
+                    <div class="details-title">📋 Student Rankings</div>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                <th style="padding: 12px; text-align: left;">Rank</th>
+                                <th style="padding: 12px; text-align: left;">Student</th>
+                                <th style="padding: 12px; text-align: center;">Start Avg</th>
+                                <th style="padding: 12px; text-align: center;">End Avg</th>
+                                <th style="padding: 12px; text-align: center;">Total Improvement</th>
+                                <th style="padding: 12px; text-align: center;">Mastery Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedStudents.map((student, index) => `
+                                <tr style="background: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
+                                    <td style="padding: 12px; font-weight: bold;">
+                                        ${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                                    </td>
+                                    <td style="padding: 12px; font-weight: 500;">${student.name}</td>
+                                    <td style="padding: 12px; text-align: center;">${student.statistics.startAverage.toFixed(1)}%</td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: #06BA63;">
+                                        ${student.statistics.endAverage.toFixed(1)}%
+                                    </td>
+                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${student.statistics.totalImprovement >= 0 ? '#06BA63' : '#f45c43'};">
+                                        ${student.statistics.totalImprovement >= 0 ? '+' : ''}${student.statistics.totalImprovement.toFixed(1)}%
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        ${student.statistics.masteryRate.toFixed(1)}%
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="details-section">
+                    <div class="details-title">📊 Class Statistics</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="label">Class Size</div>
+                            <div class="value">${students.length}</div>
+                            <div class="change">Students</div>
+                        </div>
+                        
+                        <div class="stat-card positive">
+                            <div class="label">Class Average</div>
+                            <div class="value">${(students.reduce((sum, s) => sum + s.statistics.endAverage, 0) / students.length).toFixed(1)}%</div>
+                            <div class="change">Final Score</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="label">Average Improvement</div>
+                            <div class="value">+${(students.reduce((sum, s) => sum + s.statistics.totalImprovement, 0) / students.length).toFixed(1)}%</div>
+                            <div class="change">Per Student</div>
+                        </div>
+                        
+                        <div class="stat-card positive">
+                            <div class="label">Top Performer</div>
+                            <div class="value">${sortedStudents[0].name}</div>
+                            <div class="change">+${sortedStudents[0].statistics.totalImprovement.toFixed(1)}% Improvement</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createComparisonProgressChart() {
+            const canvas = document.getElementById('comparisonProgressChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (chartInstances.comparisonProgress) {
+                chartInstances.comparisonProgress.destroy();
+            }
+            
+            const datasets = Object.entries(studentsData).map(([name, data], index) => {
+                const colors = [
+                    'rgb(102, 126, 234)',
+                    'rgb(235, 51, 73)',
+                    'rgb(56, 239, 125)',
+                    'rgb(255, 165, 0)',
+                    'rgb(147, 51, 234)',
+                    'rgb(0, 123, 255)',
+                    'rgb(255, 193, 7)',
+                    'rgb(32, 201, 151)',
+                    'rgb(220, 53, 69)',
+                    'rgb(40, 167, 69)'
+                ];
+                
+                return {
+                    label: name,
+                    data: data.dailyAverages,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length] + '20',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                };
+            });
+            
+            chartInstances.comparisonProgress = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: 10
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function createComparisonImprovementChart() {
+            const canvas = document.getElementById('comparisonImprovementChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (chartInstances.comparisonImprovement) {
+                chartInstances.comparisonImprovement.destroy();
+            }
+            
+            const students = Object.entries(studentsData);
+            const sortedStudents = students.sort((a, b) => 
+                b[1].statistics.totalImprovement - a[1].statistics.totalImprovement
+            );
+            
+            chartInstances.comparisonImprovement = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedStudents.map(([name, _]) => name),
+                    datasets: [{
+                        label: 'Total Improvement',
+                        data: sortedStudents.map(([_, data]) => data.statistics.totalImprovement),
+                        backgroundColor: sortedStudents.map(([_, data]) => {
+                            const improvement = data.statistics.totalImprovement;
+                            if (improvement >= 50) return 'rgba(56, 239, 125, 0.8)';
+                            if (improvement >= 30) return 'rgba(255, 200, 0, 0.8)';
+                            return 'rgba(244, 92, 67, 0.8)';
+                        }),
+                        borderColor: sortedStudents.map(([_, data]) => {
+                            const improvement = data.statistics.totalImprovement;
+                            if (improvement >= 50) return 'rgb(56, 239, 125)';
+                            if (improvement >= 30) return 'rgb(255, 200, 0)';
+                            return 'rgb(244, 92, 67)';
+                        }),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function createComparisonMasteryChart() {
+            const canvas = document.getElementById('comparisonMasteryChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (chartInstances.comparisonMastery) {
+                chartInstances.comparisonMastery.destroy();
+            }
+            
+            const students = Object.entries(studentsData);
+            const sortedStudents = students.sort((a, b) => 
+                b[1].statistics.masteryRate - a[1].statistics.masteryRate
+            );
+            
+            chartInstances.comparisonMastery = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: sortedStudents.map(([name, _]) => name),
+                    datasets: [{
+                        data: sortedStudents.map(([_, data]) => data.statistics.masteryRate),
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(235, 51, 73, 0.8)',
+                            'rgba(56, 239, 125, 0.8)',
+                            'rgba(255, 165, 0, 0.8)',
+                            'rgba(147, 51, 234, 0.8)',
+                            'rgba(0, 123, 255, 0.8)',
+                            'rgba(255, 193, 7, 0.8)',
+                            'rgba(32, 201, 151, 0.8)',
+                            'rgba(220, 53, 69, 0.8)',
+                            'rgba(40, 167, 69, 0.8)'
+                        ],
+                        borderColor: 'white',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.parsed.toFixed(1) + '% mastery';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Download functionality
+        async function downloadStudentReport(studentName) {
+            const statusEl = document.getElementById('downloadStatus');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.textContent = `Preparing ${studentName}'s report...`;
+            }
+            
+            try {
+                // Get student data
+                const data = studentsData[studentName];
+                if (!data) {
+                    throw new Error('Student data not found');
+                }
+                
+                // Create a temporary container for the report
+                const tempContainer = document.createElement('div');
+                tempContainer.id = 'tempReportContainer';
+                tempContainer.style.cssText = `
+                    position: absolute;
+                    left: -9999px;
+                    top: 0;
+                    width: 1200px;
+                    background: white;
+                    padding: 40px;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                `;
+                document.body.appendChild(tempContainer);
+                
+                const today = new Date().toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                // Build the report HTML with inline styles
+                const reportHTML = `
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 30px;">
+                        <h1 style="margin: 0; font-size: 2em; font-weight: 300;">Korean Learning Progress Report</h1>
+                        <h2 style="margin: 10px 0; font-weight: 400;">Student: ${studentName}</h2>
+                        <p style="margin: 5px 0; opacity: 0.9;">${today}</p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                            <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">STARTING AVERAGE</div>
+                            <div style="font-size: 2em; font-weight: 300;">${data.statistics.startAverage.toFixed(1)}%</div>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                            <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">FINAL AVERAGE</div>
+                            <div style="font-size: 2em; font-weight: 300;">${data.statistics.endAverage.toFixed(1)}%</div>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                            <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">IMPROVEMENT</div>
+                            <div style="font-size: 2em; font-weight: 300;">+${data.statistics.totalImprovement.toFixed(1)}%</div>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                            <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">MASTERY</div>
+                            <div style="font-size: 2em; font-weight: 300;">${data.statistics.masteredCount}/${data.statistics.totalCharacters}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 30px; border-radius: 15px; margin-bottom: 30px;">
+                        <h3 style="color: #333; margin-bottom: 20px;">📊 Character Analysis</h3>
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
+                            ${data.characters.slice(0, 20).map(char => {
+                                const imp = data.characterImprovements[char];
+                                const color = imp.mastered ? '#38ef7d' : imp.improvement > 0 ? '#ffa500' : '#f45c43';
+                                return `
+                                    <div style="background: white; border: 2px solid ${color}; padding: 15px; border-radius: 10px; text-align: center;">
+                                        <div style="font-size: 1.5em; font-weight: 500;">${char}</div>
+                                        <div style="font-size: 0.8em; color: #666; margin: 5px 0;">${imp.start.toFixed(0)}% → ${imp.end.toFixed(0)}%</div>
+                                        <div style="font-size: 1em; font-weight: 600; color: ${color};">
+                                            ${imp.improvement >= 0 ? '+' : ''}${imp.improvement.toFixed(0)}%
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                tempContainer.innerHTML = reportHTML;
+                
+                // Wait a moment for the content to render
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Use html2canvas to capture the report
+                const canvas = await html2canvas(tempContainer, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                
+                // Convert to blob and download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `${studentName}_Progress_Report.png`;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    
+                    // Clean up
+                    document.body.removeChild(tempContainer);
+                    
+                    if (statusEl) {
+                        statusEl.textContent = `✅ Downloaded ${studentName}'s report!`;
+                        setTimeout(() => {
+                            statusEl.style.display = 'none';
+                        }, 3000);
+                    }
+                }, 'image/png');
+                
+            } catch (error) {
+                console.error('Error downloading report:', error);
+                
+                // Fallback: Try simpler approach with canvas
+                fallbackDownload(studentName);
+            }
+        }
+        
+        // Fallback download method using canvas directly
+        function fallbackDownload(studentName) {
+            try {
+                const data = studentsData[studentName];
+                if (!data) {
+                    alert('Student data not found');
+                    return;
+                }
+                
+                // Create a canvas element
+                const canvas = document.createElement('canvas');
+                canvas.width = 1200;
+                canvas.height = 1600;
+                const ctx = canvas.getContext('2d');
+                
+                // Set white background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw header
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, 150);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(20, 20, canvas.width - 40, 150);
+                
+                // Draw title
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Korean Learning Progress Report', canvas.width / 2, 70);
+                ctx.font = '24px Arial';
+                ctx.fillText(`Student: ${studentName}`, canvas.width / 2, 110);
+                ctx.font = '18px Arial';
+                ctx.fillText(new Date().toLocaleDateString(), canvas.width / 2, 145);
+                
+                // Draw statistics
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 24px Arial';
+                ctx.fillText('Performance Summary:', 50, 230);
+                
+                ctx.font = '20px Arial';
+                ctx.fillText(`Starting Average: ${data.statistics.startAverage.toFixed(1)}%`, 50, 280);
+                ctx.fillText(`Final Average: ${data.statistics.endAverage.toFixed(1)}%`, 50, 320);
+                ctx.fillText(`Total Improvement: +${data.statistics.totalImprovement.toFixed(1)}%`, 50, 360);
+                ctx.fillText(`Characters Mastered: ${data.statistics.masteredCount}/${data.statistics.totalCharacters}`, 50, 400);
+                
+                // Draw character grid
+                ctx.font = 'bold 24px Arial';
+                ctx.fillText('Character Analysis:', 50, 480);
+                
+                let x = 50;
+                let y = 520;
+                const boxSize = 110;
+                const padding = 15;
+                
+                data.characters.forEach((char, index) => {
+                    if (index > 0 && index % 10 === 0) {
+                        x = 50;
+                        y += boxSize + padding;
+                    }
+                    
+                    const imp = data.characterImprovements[char];
+                    
+                    // Draw box
+                    ctx.strokeStyle = imp.mastered ? '#38ef7d' : imp.improvement > 0 ? '#ffa500' : '#f45c43';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, boxSize, boxSize);
+                    
+                    // Draw character
+                    ctx.fillStyle = '#333';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(char, x + boxSize/2, y + 35);
+                    
+                    // Draw scores
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.fillText(`${imp.start.toFixed(0)}%→${imp.end.toFixed(0)}%`, x + boxSize/2, y + 60);
+                    
+                    // Draw improvement
+                    ctx.font = 'bold 16px Arial';
+                    ctx.fillStyle = imp.improvement >= 0 ? '#38ef7d' : '#f45c43';
+                    ctx.fillText(`${imp.improvement >= 0 ? '+' : ''}${imp.improvement.toFixed(0)}%`, x + boxSize/2, y + 85);
+                    
+                    x += boxSize + padding;
+                });
+                
+                // Download the canvas as image
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `${studentName}_Progress_Report.png`;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    
+                    const statusEl = document.getElementById('downloadStatus');
+                    if (statusEl) {
+                        statusEl.textContent = `✅ Downloaded ${studentName}'s report!`;
+                        setTimeout(() => {
+                            statusEl.style.display = 'none';
+                        }, 3000);
+                    }
+                }, 'image/png');
+                
+            } catch (error) {
+                console.error('Fallback download also failed:', error);
+                alert('Unable to download report. Please try again or use browser screenshot feature.');
+            }
+        }
+        
+        async function downloadAllReports() {
+            const statusEl = document.getElementById('downloadStatus');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+            }
+            
+            const students = Object.keys(studentsData);
+            for (let i = 0; i < students.length; i++) {
+                if (statusEl) {
+                    statusEl.textContent = `Downloading report ${i + 1} of ${students.length}...`;
+                }
+                await downloadStudentReport(students[i]);
+                // Small delay between downloads
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            if (statusEl) {
+                statusEl.textContent = `✅ All ${students.length} reports downloaded!`;
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
