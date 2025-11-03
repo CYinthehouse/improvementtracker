@@ -705,12 +705,26 @@
                         for (let j = 1; j <= days.length; j++) {
                             const gradeStr = data[i][j];
                             if (gradeStr && gradeStr.includes('Grade:')) {
-                                const parts = gradeStr.replace('Grade: ', '').split('/');
-                                if (parts.length === 2) {
-                                    const percentage = (parseInt(parts[0]) / parseInt(parts[1])) * 100;
-                                    scores[char].push(percentage);
+                                const gradeValue = gradeStr.replace('Grade: ', '').trim();
+                                
+                                // Handle both "1/5" and "1" formats
+                                if (gradeValue.includes('/')) {
+                                    const parts = gradeValue.split('/');
+                                    if (parts.length === 2) {
+                                        const percentage = (parseInt(parts[0]) / parseInt(parts[1])) * 100;
+                                        scores[char].push(percentage);
+                                    } else {
+                                        scores[char].push(0);
+                                    }
                                 } else {
-                                    scores[char].push(0);
+                                    // Assume out of 5 if no denominator given
+                                    const numerator = parseInt(gradeValue);
+                                    if (!isNaN(numerator)) {
+                                        const percentage = (numerator / 5) * 100;
+                                        scores[char].push(percentage);
+                                    } else {
+                                        scores[char].push(0);
+                                    }
                                 }
                             } else {
                                 scores[char].push(0);
@@ -1950,6 +1964,8 @@
         function generatePDFSummarySection(data) {
             const stats = data.statistics;
             const isDaily = analysisMode === 'daily';
+            const topImprovements = stats.bestImprovements.slice(0, 5);
+            const lowestScores = stats.lowestScores.slice(0, 5);
             
             if (isDaily) {
                 return `
@@ -1958,19 +1974,36 @@
                             📊 Performance Summary
                         </h2>
                         
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
                             <h3 style="color: #333; font-size: 1.4em; margin-bottom: 15px;">Daily Performance</h3>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 1.1em;">
-                                <div><strong>Daily Average:</strong> ${stats.startAverage.toFixed(1)}% mastery</div>
-                                <div><strong>Characters Mastered:</strong> ${stats.masteredCount}/${stats.totalCharacters} (${stats.masteryRate.toFixed(1)}%)</div>
+                            <div style="font-size: 1.1em; line-height: 2.5;">
+                                <div style="margin-bottom: 12px;"><strong>Daily Average:</strong> ${stats.startAverage.toFixed(1)}% mastery</div>
+                                <div style="margin-bottom: 12px;"><strong>Characters Mastered:</strong> ${stats.masteredCount}/${stats.totalCharacters} (${stats.masteryRate.toFixed(1)}%)</div>
                             </div>
+                        </div>
+                        
+                        <div style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%); padding: 20px; border-radius: 10px; border-left: 4px solid #FFC107; margin-bottom: 20px;">
+                            <h3 style="color: #F57C00; font-size: 1.5em; margin-bottom: 15px;">⚠️ Priority Focus Areas (Lowest Scores)</h3>
+                            <div style="font-size: 1.1em; line-height: 2;">
+                                ${lowestScores.map((item, index) => `
+                                    <div style="padding: 8px 0; border-bottom: 1px solid rgba(255, 193, 7, 0.2);">
+                                        <strong>${index + 1}. ${item.char}:</strong> 
+                                        <span style="font-weight: bold;">${item.end.toFixed(1)}%</span> 
+                                        <span style="color: #F57C00;">(${(100 - item.end).toFixed(1)}% more progress needed)</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 20px; border-radius: 10px; border-left: 4px solid #667eea;">
+                            <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 15px;">👨‍🏫 Teacher Recommendations</h3>
+                            <p style="font-size: 1.1em; line-height: 1.8; color: #333;">
+                                ${data.teacherRecommendations || 'Great work today! Keep practicing consistently to maintain and improve your progress.'}
+                            </p>
                         </div>
                     </div>
                 `;
             }
-            
-            const topImprovements = stats.bestImprovements.slice(0, 5);
-            const lowestScores = stats.lowestScores.slice(0, 5);
             
             return `
                 <div class="pdf-summary-section" style="background: white; padding: 30px; border-radius: 15px; margin: 20px 0; page-break-inside: avoid;">
