@@ -4,10 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Improvement Tracker - Korean Learning Progress</title>
+    
+    <!-- Google Fonts for Korean support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -16,7 +21,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
@@ -564,6 +569,9 @@
         </div>
     </div>
 
+    <!-- html2canvas for PDF generation -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
     <script>
         let studentsData = {};
         let currentStudent = null;
@@ -598,10 +606,8 @@
                 return;
             }
 
-            // Disable mode buttons
             document.getElementById('weeklyBtn').disabled = true;
             document.getElementById('dailyBtn').disabled = true;
-
             document.getElementById('loadingMessage').style.display = 'block';
             document.getElementById('processBtn').disabled = true;
             
@@ -631,7 +637,6 @@
                                 
                                 if (successfulFiles === 0) {
                                     alert('No valid CSV files could be processed. Please check your file format.');
-                                    // Re-enable mode buttons if processing failed
                                     document.getElementById('weeklyBtn').disabled = false;
                                     document.getElementById('dailyBtn').disabled = false;
                                     return;
@@ -1153,8 +1158,11 @@
             }
             
             if (!isDaily && stats.bestImprovements.length > 0) {
-                const topImprovers = stats.bestImprovements.map(c => `${c.char} (+${c.improvement.toFixed(0)}%)`).join(', ');
-                insights.push(`🚀 <strong>Top 5 Best Improvements:</strong> ${topImprovers}`);
+                insights.push(`🚀 <strong>Top 5 Best Improvements:</strong>`);
+                stats.bestImprovements.forEach((item, index) => {
+                    const videoLink = getVideoLinkHTML(item.char, item.end);
+                    insights.push(`${index + 1}. ${item.char}: +${item.improvement.toFixed(0)}% improvement ${videoLink}`);
+                });
             }
             
             if (!isDaily) {
@@ -1169,7 +1177,8 @@
                 stats.lowestScores.forEach((item, index) => {
                     const percentage = item.end.toFixed(1);
                     const improvementNeeded = (100 - item.end).toFixed(1);
-                    insights.push(`${index + 1}. <strong>${item.char}</strong> - Currently: ${percentage}% mastery (${improvementNeeded}% more progress is needed for mastery)`);
+                    const videoLink = getVideoLinkHTML(item.char, item.end);
+                    insights.push(`${index + 1}. <strong>${item.char}</strong> - Currently: ${percentage}% mastery (${improvementNeeded}% more progress is needed for mastery) ${videoLink}`);
                 });
                 
                 const avgLowestScore = stats.lowestScores.reduce((sum, item) => sum + item.end, 0) / stats.lowestScores.length;
@@ -1783,6 +1792,188 @@
             });
         }
 
+        // Hardcoded video links mapping (no CSV upload needed)
+        const videoLinksMap = {
+            // Consonants
+            'ㄱ': 'https://www.loom.com/share/bde1c41374f24cc5ba516cf659df0d36',
+            'ㄴ': 'https://www.loom.com/share/33c75894ed6d4a0b98310daaa7788d51',
+            'ㄷ': 'https://www.loom.com/share/7ac4ca22c51f48b18fc8a8b81f12a817',
+            'ㄹ': 'https://www.loom.com/share/e439b6cbab804143aaf45e9bd3d7cddb',
+            'ㅁ': 'https://www.loom.com/share/bf74c4a6acb14115930559065bf25588',
+            'ㅂ': 'https://www.loom.com/share/62c7666380e940cfac0e2b1b684a94b6',
+            'ㅅ': 'https://www.loom.com/share/26d88f842c6c4278a50e2537edcc882f',
+            'ㅇ': 'https://www.loom.com/share/6655678667ee4687a1502fb1718f9e1e',
+            'ㅈ': 'https://www.loom.com/share/bf22033d2f72468f95fef634c68d6650',
+            'ㅉ': 'https://www.loom.com/share/276e388e36c64baa98cda921cc04d144',
+            'ㄲ': 'https://www.loom.com/share/d4788f8fcd8d41bcaff58916217449af',
+            'ㄸ': 'https://www.loom.com/share/6b5a389e842a4fa8ad0d396a77215b20',
+            'ㅃ': 'https://www.loom.com/share/fe36ef55e4674c9d9efd0f450ff0a8d5',
+            
+            // Vowels
+            'ㅏ': 'https://www.loom.com/share/d5fc79b3c094401ab76ccf5b379776a5',
+            'ㅐ': 'https://www.loom.com/share/579d0ab338bc42f3af75285f560f394d',
+            'ㅒ': 'https://www.loom.com/share/579d0ab338bc42f3af75285f560f394d',
+            'ㅓ': 'https://www.loom.com/share/d5fc79b3c094401ab76ccf5b379776a5',
+            'ㅔ': 'https://www.loom.com/share/579d0ab338bc42f3af75285f560f394d',
+            'ㅖ': 'https://www.loom.com/share/579d0ab338bc42f3af75285f560f394d',
+            'ㅗ': 'https://www.loom.com/share/30ad74da3807499ba2ccd02053edd046',
+            'ㅘ': 'https://www.loom.com/share/506c1f2dcc7440c383127c1fbc69b48a',
+            'ㅙ': 'https://www.loom.com/share/df65d668742741a7900b45bc091cac7c',
+            'ㅚ': 'https://www.loom.com/share/506c1f2dcc7440c383127c1fbc69b48a',
+            'ㅜ': 'https://www.loom.com/share/30ad74da3807499ba2ccd02053edd046',
+            'ㅝ': 'https://www.loom.com/share/b9dfa8e9c76c4537a603aa6e2a909342',
+            'ㅞ': 'https://www.loom.com/share/df65d668742741a7900b45bc091cac7c',
+            'ㅟ': 'https://www.loom.com/share/df65d668742741a7900b45bc091cac7c',
+            'ㅡ': 'https://www.loom.com/share/7a09ee7a1d9147b08d48c867e434897c',
+            '의': 'https://www.loom.com/share/f3cf5a1872b64befb8959f9146648745',
+            'ㅣ': 'https://www.loom.com/share/23bf0e1e1be142f89d92cc827032c0a5'
+        };
+
+        function getVideoLinkHTML(char, score) {
+            // Only show video links if score is 40% or below (1/5 = 20%, 2/5 = 40%)
+            if (score !== undefined && score > 40) {
+                return '';
+            }
+            
+            const link = videoLinksMap[char];
+            if (link) {
+                // Add data attribute for PDF link tracking
+                return `<a href="${link}" target="_blank" class="video-link" data-video-url="${link}" data-char="${char}" style="color: #667eea; text-decoration: none; font-weight: 600; margin-left: 10px; display: inline-block; padding: 5px 10px; background: rgba(102, 126, 234, 0.1); border-radius: 5px; border: 1px solid #667eea;">🎥 Watch Video</a>`;
+            }
+            return '';
+        }
+
+        function collectVideoLinkPositions(container) {
+            const links = container.querySelectorAll('.video-link');
+            const positions = [];
+            
+            links.forEach(link => {
+                const rect = link.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                
+                positions.push({
+                    url: link.getAttribute('data-video-url'),
+                    char: link.getAttribute('data-char'),
+                    x: rect.left - containerRect.left,
+                    y: rect.top - containerRect.top,
+                    width: rect.width,
+                    height: rect.height
+                });
+            });
+            
+            return positions;
+        }
+
+        function addClickableLinksToPDF(pdf, linkPositions, containerWidth, scale, pageWidth, pageHeight, margin) {
+            const contentWidth = pageWidth - (2 * margin);
+            const contentHeight = pageHeight - (2 * margin);
+            
+            // Conversion factor: container pixels to PDF mm
+            const pxToMM = contentWidth / containerWidth;
+            
+            linkPositions.forEach(link => {
+                // Convert link position from container px to PDF mm
+                const linkXmm = link.x * pxToMM;
+                const linkYmm = link.y * pxToMM;
+                const linkWidthMM = link.width * pxToMM;
+                const linkHeightMM = link.height * pxToMM;
+                
+                // Determine which page this link is on
+                const pageIndex = Math.floor(linkYmm / contentHeight);
+                
+                // Calculate Y position on the specific page
+                const yOnPage = (linkYmm % contentHeight) + margin;
+                const xPos = linkXmm + margin;
+                
+                // Set the correct page (pages are 1-indexed after first page is created)
+                if (pageIndex > 0 && pageIndex < pdf.internal.pages.length - 1) {
+                    pdf.setPage(pageIndex + 1);
+                }
+                
+                // Add invisible clickable rectangle
+                console.log(`Adding link on page ${pageIndex + 1}: ${link.char} at (${xPos.toFixed(2)}, ${yOnPage.toFixed(2)})`);
+                pdf.link(xPos, yOnPage, linkWidthMM, linkHeightMM, { url: link.url });
+            });
+        }
+
+        function generatePDFSummarySection(data) {
+            const stats = data.statistics;
+            const isDaily = analysisMode === 'daily';
+            
+            if (isDaily) {
+                return `
+                    <div class="pdf-summary-section" style="background: white; padding: 30px; border-radius: 15px; margin: 20px 0; page-break-inside: avoid;">
+                        <h2 style="color: #667eea; font-size: 2em; margin-bottom: 25px; border-bottom: 3px solid #667eea; padding-bottom: 15px;">
+                            📊 Performance Summary
+                        </h2>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                            <h3 style="color: #333; font-size: 1.4em; margin-bottom: 15px;">Daily Performance</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 1.1em;">
+                                <div><strong>Daily Average:</strong> ${stats.startAverage.toFixed(1)}% mastery</div>
+                                <div><strong>Characters Mastered:</strong> ${stats.masteredCount}/${stats.totalCharacters} (${stats.masteryRate.toFixed(1)}%)</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const topImprovements = stats.bestImprovements.slice(0, 5);
+            const lowestScores = stats.lowestScores.slice(0, 5);
+            
+            return `
+                <div class="pdf-summary-section" style="background: white; padding: 30px; border-radius: 15px; margin: 20px 0; page-break-inside: avoid;">
+                    <h2 style="color: #667eea; font-size: 2em; margin-bottom: 25px; border-bottom: 3px solid #667eea; padding-bottom: 15px;">
+                        📊 Performance Summary
+                    </h2>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 1.1em; line-height: 2;">
+                            <div><strong>Starting Average:</strong> ${stats.startAverage.toFixed(1)}% mastery</div>
+                            <div><strong>Final Average:</strong> ${stats.endAverage.toFixed(1)}% mastery</div>
+                            <div><strong>Total Improvement:</strong> <span style="color: ${stats.totalImprovement >= 0 ? '#11998e' : '#eb3349'}; font-weight: bold;">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)}%</span></div>
+                            <div><strong>Characters Mastered:</strong> ${stats.masteredCount}/${stats.totalCharacters} (${stats.masteryRate.toFixed(1)}%)</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(56, 239, 125, 0.1) 0%, rgba(17, 153, 142, 0.1) 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #11998e;">
+                        <h3 style="color: #11998e; font-size: 1.5em; margin-bottom: 15px;">🎯 Top 5 Best Improvements</h3>
+                        <div style="font-size: 1.1em; line-height: 2;">
+                            ${topImprovements.map((item, index) => `
+                                <div style="padding: 8px 0; border-bottom: 1px solid rgba(17, 153, 142, 0.2);">
+                                    <strong>${index + 1}. ${item.char}:</strong> 
+                                    <span style="color: #11998e; font-weight: bold;">+${item.improvement.toFixed(1)}%</span> 
+                                    <span style="color: #666;">(${item.start.toFixed(1)}% → ${item.end.toFixed(1)}%)</span>
+                                    ${getVideoLinkHTML(item.char, item.end)}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%); padding: 20px; border-radius: 10px; border-left: 4px solid #FFC107; margin-bottom: 20px;">
+                        <h3 style="color: #F57C00; font-size: 1.5em; margin-bottom: 15px;">⚠️ Priority Focus Areas (Lowest Scores)</h3>
+                        <div style="font-size: 1.1em; line-height: 2;">
+                            ${lowestScores.map((item, index) => `
+                                <div style="padding: 8px 0; border-bottom: 1px solid rgba(255, 193, 7, 0.2);">
+                                    <strong>${index + 1}. ${item.char}:</strong> 
+                                    <span style="font-weight: bold;">${item.end.toFixed(1)}%</span> 
+                                    <span style="color: #F57C00;">(${(100 - item.end).toFixed(1)}% more progress needed)</span>
+                                    ${getVideoLinkHTML(item.char, item.end)}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 20px; border-radius: 10px; border-left: 4px solid #667eea;">
+                        <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 15px;">👨‍🏫 Teacher Recommendations</h3>
+                        <p style="font-size: 1.1em; line-height: 1.8; color: #333;">
+                            ${data.teacherRecommendations || 'Great work! Keep practicing consistently to maintain and improve your progress.'}
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
         async function downloadStudentReportPDF(studentName) {
             const statusEl = document.getElementById('downloadStatus');
             if (statusEl) {
@@ -1791,140 +1982,248 @@
             }
 
             try {
+                // Wait for all fonts to be fully loaded
+                if (document.fonts && document.fonts.ready) {
+                    await document.fonts.ready;
+                }
+                
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('p', 'mm', 'a4');
                 const data = studentsData[studentName];
+
+                const reportEl = document.querySelector(`.student-report.active`);
+                if (!reportEl) {
+                    alert('No report found to export.');
+                    if (statusEl) statusEl.style.display = 'none';
+                    return;
+                }
+
+                // Create a temporary container for PDF generation with ONLY required sections
+                const pdfContainer = document.createElement('div');
+                pdfContainer.style.width = '1200px';
+                pdfContainer.style.background = 'white';
+                pdfContainer.style.padding = '40px';
+                pdfContainer.style.position = 'absolute';
+                pdfContainer.style.left = '-9999px';
+                pdfContainer.style.fontFamily = "'Noto Sans KR', sans-serif";
                 
-                doc.setFontSize(20);
-                doc.setTextColor(102, 126, 234);
-                doc.text('Korean Learning Progress Report', 105, 20, { align: 'center' });
+                // Add header
+                pdfContainer.innerHTML = `
+                    <div style="text-align: center; margin-bottom: 30px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px;">
+                        <h1 style="font-size: 2.5em; margin-bottom: 10px; font-weight: 600;">📚 Korean Learning Progress Report</h1>
+                        <h2 style="font-size: 2em; margin-top: 15px; font-weight: 400;">${studentName}</h2>
+                        <p style="font-size: 1.2em; margin-top: 10px; opacity: 0.9;">${analysisMode === 'daily' ? data.days[0] : `${data.days[0]} - ${data.days[data.days.length - 1]}`}</p>
+                    </div>
+                `;
                 
-                doc.setFontSize(16);
-                doc.text(`Student: ${studentName}`, 105, 30, { align: 'center' });
+                // Add the PDF summary section (includes stats, top improvements, lowest scores, teacher recommendations)
+                pdfContainer.innerHTML += generatePDFSummarySection(data);
                 
-                doc.setFontSize(10);
-                doc.setTextColor(100);
-                const today = new Date().toLocaleDateString();
-                doc.text(`Generated: ${today}`, 105, 37, { align: 'center' });
+                document.body.appendChild(pdfContainer);
                 
-                doc.setFontSize(9);
-                doc.setTextColor(150);
-                doc.text('Note: Korean characters displayed as numbers - refer to online report for full characters', 105, 43, { align: 'center' });
+                // Wait for fonts and rendering
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                doc.setFontSize(12);
-                doc.setTextColor(0);
-                doc.text('Performance Summary', 20, 55);
-                
-                doc.setFontSize(10);
-                const stats = data.statistics;
-                doc.text(`Starting Average: ${stats.startAverage.toFixed(1)}% mastery`, 20, 63);
-                doc.text(`Final Average: ${stats.endAverage.toFixed(1)}% mastery`, 20, 70);
-                doc.text(`Total Improvement: +${stats.totalImprovement.toFixed(1)}%`, 20, 77);
-                doc.text(`Characters Mastered: ${stats.masteredCount}/${stats.totalCharacters} (${stats.masteryRate.toFixed(1)}%)`, 20, 84);
-                
-                doc.setFontSize(12);
-                doc.text('Top 5 Best Improvements', 20, 97);
-                doc.setFontSize(10);
-                let yPos = 105;
-                stats.bestImprovements.forEach((item, index) => {
-                    const charIndex = data.characters.indexOf(item.char);
-                    doc.text(`${index + 1}. Character #${charIndex + 1}: +${item.improvement.toFixed(1)}% (${item.start.toFixed(0)}% to ${item.end.toFixed(0)}%)`, 25, yPos);
-                    yPos += 7;
-                });
-                
-                yPos += 5;
-                doc.setFontSize(12);
-                doc.text('Priority Focus Areas (Lowest Scores)', 20, yPos);
-                doc.setFontSize(10);
-                yPos += 8;
-                stats.lowestScores.forEach((item, index) => {
-                    const charIndex = data.characters.indexOf(item.char);
-                    const improvementNeeded = (100 - item.end).toFixed(1);
-                    doc.text(`${index + 1}. Character #${charIndex + 1}: ${item.end.toFixed(1)}% (${improvementNeeded}% more progress needed)`, 25, yPos);
-                    yPos += 7;
-                });
-                
-                // Add teacher recommendations if present
-                if (data.teacherRecommendations) {
-                    yPos += 10;
-                    if (yPos > 240) {
-                        doc.addPage();
-                        yPos = 20;
+                // IMPORTANT: Collect video link positions BEFORE capturing
+                const linkPositions = collectVideoLinkPositions(pdfContainer);
+                console.log('Collected video link positions:', linkPositions);
+
+                if (statusEl) {
+                    statusEl.textContent = `Capturing charts for ${studentName}...`;
+                }
+
+                // CRITICAL: Capture the actual chart canvases as images and add them to PDF container
+                if (analysisMode === 'weekly') {
+                    // Capture Weekly Progress Overview Chart
+                    const progressCanvas = document.getElementById('progressChart');
+                    if (progressCanvas) {
+                        const progressChartImg = progressCanvas.toDataURL('image/png', 1.0);
+                        pdfContainer.innerHTML += `
+                            <div style="margin-top: 30px; page-break-inside: avoid;">
+                                <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 15px;">📈 Weekly Progress Overview</h3>
+                                <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e0e0e0;">
+                                    <img src="${progressChartImg}" style="width: 100%; height: auto;" />
+                                </div>
+                            </div>
+                        `;
                     }
-                    doc.setFontSize(12);
-                    doc.text('Teacher Recommendations', 20, yPos);
-                    yPos += 8;
-                    doc.setFontSize(10);
-                    const lines = doc.splitTextToSize(data.teacherRecommendations, 170);
-                    doc.text(lines, 20, yPos);
-                    yPos += lines.length * 7;
+                    
+                    // Capture Top 5 Character Improvements Bar Chart
+                    const improvementCanvas = document.getElementById('improvementChart');
+                    if (improvementCanvas) {
+                        const improvementChartImg = improvementCanvas.toDataURL('image/png', 1.0);
+                        pdfContainer.innerHTML += `
+                            <div style="margin-top: 30px; page-break-inside: avoid;">
+                                <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 15px;">🎯 Top 5 Character Improvements</h3>
+                                <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e0e0e0;">
+                                    <img src="${improvementChartImg}" style="width: 100%; height: auto;" />
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Daily mode - capture daily character chart
+                    const dailyCanvas = document.getElementById('dailyCharacterChart');
+                    if (dailyCanvas) {
+                        const dailyChartImg = dailyCanvas.toDataURL('image/png', 1.0);
+                        pdfContainer.innerHTML += `
+                            <div style="margin-top: 30px; page-break-inside: avoid;">
+                                <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 15px;">📊 Character Performance Breakdown</h3>
+                                <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e0e0e0;">
+                                    <img src="${dailyChartImg}" style="width: 100%; height: auto;" />
+                                </div>
+                            </div>
+                        `;
+                    }
                 }
                 
-                yPos += 10;
-                if (yPos > 240) {
-                    doc.addPage();
-                    yPos = 20;
+                // Wait for images to load
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                if (statusEl) {
+                    statusEl.textContent = `Capturing ${studentName}'s report with Hangul characters...`;
                 }
-                
-                const progressCanvas = document.getElementById('progressChart');
-                if (progressCanvas) {
-                    const progressImg = progressCanvas.toDataURL('image/png');
-                    doc.text('Weekly Progress Overview', 20, yPos);
-                    doc.addImage(progressImg, 'PNG', 20, yPos + 5, 170, 80);
-                    yPos += 90;
-                }
-                
-                doc.addPage();
-                yPos = 20;
-                
-                const improvementCanvas = document.getElementById('improvementChart');
-                if (improvementCanvas) {
-                    const improvementImg = improvementCanvas.toDataURL('image/png');
-                    doc.text('Top 5 Character Improvements', 20, yPos);
-                    doc.addImage(improvementImg, 'PNG', 20, yPos + 5, 170, 80);
-                }
-                
-                // Add character reference table
-                doc.addPage();
-                doc.setFontSize(12);
-                doc.text('Character Reference Guide', 20, 20);
-                doc.setFontSize(9);
-                doc.text('Use this guide to identify characters by their numbers:', 20, 28);
-                
-                // Create table with autoTable
-                const tableData = data.characters.map((char, index) => [
-                    `#${index + 1}`,
-                    char,
-                    `${data.characterImprovements[char].start.toFixed(0)}%`,
-                    `${data.characterImprovements[char].end.toFixed(0)}%`,
-                    `${data.characterImprovements[char].improvement >= 0 ? '+' : ''}${data.characterImprovements[char].improvement.toFixed(0)}%`
-                ]);
-                
-                doc.autoTable({
-                    startY: 35,
-                    head: [['#', 'Character', 'Start', 'End', 'Change']],
-                    body: tableData,
-                    theme: 'grid',
-                    styles: { fontSize: 9 },
-                    headStyles: { fillColor: [102, 126, 234] }
+
+                const scale = 3; // Higher scale for better quality and font rendering
+                const canvas = await html2canvas(pdfContainer, {
+                    scale: scale,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    windowWidth: 1200,
+                    onclone: (clonedDoc) => {
+                        // Ensure fonts are applied in the cloned document
+                        const clonedContainer = clonedDoc.querySelector('div');
+                        if (clonedContainer) {
+                            clonedContainer.style.fontFamily = "'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+                        }
+                    }
                 });
+
+                // Remove temporary container
+                document.body.removeChild(pdfContainer);
+
+                if (statusEl) {
+                    statusEl.textContent = `Generating PDF for ${studentName}...`;
+                }
+
+                const imgData = canvas.toDataURL('image/png', 1.0);
+
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = 210;
+                const pageHeight = 297;
+                const margin = 10;
+                const contentWidth = pageWidth - (2 * margin);
+                const containerWidth = 1200; // The width we set for pdfContainer
+
+                const pxPerMM = canvas.width / pageWidth;
+                const imgHeightMM = canvas.height / pxPerMM;
+
+                let y = 0;
+                let remaining = imgHeightMM;
+                let pageNum = 0;
+
+                while (remaining > 0) {
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    const availableHeight = pageHeight - (2 * margin);
+                    const pageHeightPx = Math.min(remaining * pxPerMM, availableHeight * pxPerMM);
+                    pageCanvas.height = pageHeightPx;
+                    const pageCtx = pageCanvas.getContext('2d');
+
+                    // Ensure high quality rendering
+                    pageCtx.imageSmoothingEnabled = true;
+                    pageCtx.imageSmoothingQuality = 'high';
+
+                    pageCtx.drawImage(
+                        canvas,
+                        0, y * pxPerMM,
+                        canvas.width, pageHeightPx,
+                        0, 0,
+                        canvas.width, pageHeightPx
+                    );
+
+                    const pageImg = pageCanvas.toDataURL('image/png', 1.0);
+                    
+                    if (pageNum > 0) {
+                        pdf.addPage();
+                    }
+                    
+                    const imgHeight = Math.min(availableHeight, remaining);
+                    pdf.addImage(pageImg, 'PNG', margin, margin, contentWidth, imgHeight);
+
+                    y += availableHeight;
+                    remaining -= availableHeight;
+                    pageNum++;
+                }
+
+                // NOW add clickable links on top of the images
+                if (linkPositions.length > 0) {
+                    console.log('Adding clickable links to PDF...');
+                    addClickableLinksToPDF(pdf, linkPositions, containerWidth, scale, pageWidth, pageHeight, margin);
+                }
                 
-                doc.setFontSize(10);
-                doc.setTextColor(102, 126, 234);
-                doc.textWithLink('View full interactive report with all characters online', 20, 280, { url: window.location.href });
-                
-                doc.save(`${studentName}_Progress_Report.pdf`);
-                
+                // Add a separate "Video Resources" page with clickable links
+                if (linkPositions.length > 0) {
+                    pdf.addPage();
+                    pdf.setFontSize(20);
+                    pdf.setTextColor(102, 126, 234);
+                    pdf.text('🎥 Video Resources for Practice', 20, 20);
+                    
+                    pdf.setFontSize(12);
+                    pdf.setTextColor(0, 0, 0);
+                    pdf.text('Click on any link below to watch the instructional video:', 20, 30);
+                    
+                    let yPos = 45;
+                    const lineHeight = 10;
+                    
+                    // Group links by character and deduplicate
+                    const uniqueLinks = {};
+                    linkPositions.forEach(link => {
+                        if (!uniqueLinks[link.char]) {
+                            uniqueLinks[link.char] = link.url;
+                        }
+                    });
+                    
+                    Object.keys(uniqueLinks).sort().forEach((char, index) => {
+                        const url = uniqueLinks[char];
+                        
+                        // Check if we need a new page
+                        if (yPos > 270) {
+                            pdf.addPage();
+                            yPos = 20;
+                        }
+                        
+                        // Draw the character in larger font
+                        pdf.setFontSize(16);
+                        pdf.text(char, 20, yPos);
+                        
+                        // Draw the link text in blue
+                        pdf.setFontSize(11);
+                        pdf.setTextColor(102, 126, 234);
+                        const linkText = 'Click here to watch video';
+                        pdf.textWithLink(linkText, 35, yPos, { url: url });
+                        
+                        // Draw the actual URL in smaller text
+                        pdf.setFontSize(9);
+                        pdf.setTextColor(100, 100, 100);
+                        pdf.text(url, 35, yPos + 4);
+                        
+                        pdf.setTextColor(0, 0, 0);
+                        yPos += lineHeight + 5;
+                    });
+                }
+
+                pdf.save(`${studentName}_Progress_Report.pdf`);
+
                 if (statusEl) {
                     statusEl.textContent = `✅ Downloaded ${studentName}'s PDF report!`;
-                    setTimeout(() => {
-                        statusEl.style.display = 'none';
-                    }, 3000);
+                    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
                 }
-                
-            } catch (error) {
-                console.error('Error generating PDF:', error);
+            } catch (e) {
+                console.error('PDF Generation Error:', e);
                 alert('Error generating PDF. Please try again.');
+                if (statusEl) statusEl.style.display = 'none';
             }
         }
         
@@ -1939,6 +2238,9 @@
                 if (statusEl) {
                     statusEl.textContent = `Downloading PDF ${i + 1} of ${students.length}...`;
                 }
+                
+                showStudent(students[i]);
+                await new Promise(resolve => setTimeout(resolve, 500));
                 await downloadStudentReportPDF(students[i]);
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
