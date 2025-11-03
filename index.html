@@ -2072,9 +2072,23 @@
                 // Wait for fonts and rendering
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // IMPORTANT: Collect video link positions BEFORE capturing
-                const linkPositions = collectVideoLinkPositions(pdfContainer);
-                console.log('Collected video link positions:', linkPositions);
+                // Determine which characters need video resources (score <= 40%)
+                const charactersNeedingVideos = [];
+                data.characters.forEach(char => {
+                    const improvement = data.characterImprovements[char];
+                    if (improvement && improvement.end <= 40) {
+                        const videoUrl = videoLinksMap[char];
+                        if (videoUrl) {
+                            charactersNeedingVideos.push({
+                                char: char,
+                                url: videoUrl,
+                                score: improvement.end
+                            });
+                        }
+                    }
+                });
+                
+                console.log('Characters needing videos:', charactersNeedingVideos);
 
                 if (statusEl) {
                     statusEl.textContent = `Capturing charts for ${studentName}...`;
@@ -2225,14 +2239,8 @@
                     pageNum++;
                 }
 
-                // NOW add clickable links on top of the images
-                if (linkPositions.length > 0) {
-                    console.log('Adding clickable links to PDF...');
-                    addClickableLinksToPDF(pdf, linkPositions, containerWidth, scale, pageWidth, pageHeight, margin);
-                }
-                
                 // Add a separate "Video Resources" page with clickable links
-                if (linkPositions.length > 0) {
+                if (charactersNeedingVideos.length > 0) {
                     pdf.addPage();
                     pdf.setFontSize(20);
                     pdf.setTextColor(102, 126, 234);
@@ -2241,21 +2249,16 @@
                     pdf.setFontSize(12);
                     pdf.setTextColor(0, 0, 0);
                     pdf.text('Click on any link below to watch the instructional video:', 20, 30);
+                    pdf.text('(These characters scored 40% or below and need extra practice)', 20, 38);
                     
-                    let yPos = 45;
+                    let yPos = 50;
                     const lineHeight = 12;
                     
-                    // Group links by character and deduplicate
-                    const uniqueLinks = {};
-                    linkPositions.forEach(link => {
-                        if (!uniqueLinks[link.char]) {
-                            uniqueLinks[link.char] = link.url;
-                        }
-                    });
+                    // Sort characters by score (lowest first)
+                    charactersNeedingVideos.sort((a, b) => a.score - b.score);
                     
-                    Object.keys(uniqueLinks).sort().forEach((char, index) => {
-                        const url = uniqueLinks[char];
-                        const romanName = getCharacterName(char);
+                    charactersNeedingVideos.forEach((item, index) => {
+                        const romanName = getCharacterName(item.char);
                         
                         // Check if we need a new page
                         if (yPos > 265) {
@@ -2263,25 +2266,37 @@
                             yPos = 20;
                         }
                         
-                        // Draw the character name in larger font
+                        // Draw the character name in larger font with score
                         pdf.setFontSize(14);
                         pdf.setTextColor(0, 0, 0);
-                        pdf.text(`${char} (${romanName})`, 20, yPos);
+                        pdf.text(`${item.char} (${romanName}) - Current Score: ${item.score.toFixed(1)}%`, 20, yPos);
                         
                         // Draw the link text in blue
                         pdf.setFontSize(11);
                         pdf.setTextColor(102, 126, 234);
                         const linkText = '> Click here to watch video';
-                        pdf.textWithLink(linkText, 25, yPos + 5, { url: url });
+                        pdf.textWithLink(linkText, 25, yPos + 5, { url: item.url });
                         
                         // Draw the actual URL in smaller text
                         pdf.setFontSize(8);
                         pdf.setTextColor(100, 100, 100);
-                        pdf.text(url, 25, yPos + 9);
+                        pdf.text(item.url, 25, yPos + 9);
                         
                         pdf.setTextColor(0, 0, 0);
                         yPos += lineHeight + 3;
                     });
+                } else {
+                    // Add a page saying no videos needed
+                    pdf.addPage();
+                    pdf.setFontSize(20);
+                    pdf.setTextColor(102, 126, 234);
+                    pdf.text('Video Resources for Practice', 20, 20);
+                    
+                    pdf.setFontSize(14);
+                    pdf.setTextColor(0, 0, 0);
+                    pdf.text('Great news! All characters scored above 40%.', 20, 40);
+                    pdf.text('No additional video practice needed at this time.', 20, 52);
+                    pdf.text('Keep up the excellent work!', 20, 64);
                 }
 
                 pdf.save(`${studentName}_Progress_Report.pdf`);
