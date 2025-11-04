@@ -683,6 +683,12 @@
             document.getElementById('dailyBtn').disabled = false;
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         function setMode(mode) {
             analysisMode = mode;
             document.getElementById('weeklyBtn').classList.toggle('active', mode === 'weekly');
@@ -809,38 +815,56 @@
                         scores[char] = [];
                         
                         for (let j = 1; j <= days.length; j++) {
-                            const gradeStr = data[i][j];
-                            if (gradeStr && gradeStr.includes('Grade:')) {
-                                const gradeValue = gradeStr.replace('Grade: ', '').trim();
-                                
-                                // Handle both "1/5" and "1" formats
-                                if (gradeValue.includes('/')) {
-                                    const parts = gradeValue.split('/');
-                                    if (parts.length === 2) {
-                                        const percentage = (parseInt(parts[0]) / parseInt(parts[1])) * 100;
+                            let gradeStr = data[i][j];
+                            
+                            // If cell is empty or undefined, assume 100% (5/5)
+                            if (!gradeStr || gradeStr.trim() === '') {
+                                scores[char].push(100);
+                                continue;
+                            }
+                            
+                            // Remove "Grade: " prefix if it exists (case insensitive)
+                            gradeStr = gradeStr.replace(/grade:\s*/i, '').trim();
+                            
+                            // Handle both "1/5" and "1" formats
+                            if (gradeStr.includes('/')) {
+                                const parts = gradeStr.split('/');
+                                if (parts.length === 2) {
+                                    const numerator = parseInt(parts[0]);
+                                    const denominator = parseInt(parts[1]);
+                                    if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
+                                        const percentage = (numerator / denominator) * 100;
                                         scores[char].push(percentage);
                                     } else {
-                                        scores[char].push(0);
+                                        scores[char].push(100); // Default to 100% if invalid
                                     }
                                 } else {
-                                    // Assume out of 5 if no denominator given
-                                    const numerator = parseInt(gradeValue);
-                                    if (!isNaN(numerator)) {
-                                        const percentage = (numerator / 5) * 100;
-                                        scores[char].push(percentage);
-                                    } else {
-                                        scores[char].push(0);
-                                    }
+                                    scores[char].push(100); // Default to 100% if invalid format
                                 }
                             } else {
-                                scores[char].push(0);
+                                // Just a number - assume out of 5
+                                const numerator = parseInt(gradeStr);
+                                if (!isNaN(numerator)) {
+                                    const percentage = (numerator / 5) * 100;
+                                    scores[char].push(percentage);
+                                } else {
+                                    scores[char].push(100); // Default to 100% if not a number
+                                }
                             }
                         }
                     }
                 }
                 
                 if (teacherRecRowIndex > 0 && data[teacherRecRowIndex + 1]) {
-                    teacherRecommendations = data[teacherRecRowIndex + 1][0] || '';
+                    // Try to get teacher recommendations from the first non-empty cell in the next row
+                    const recRow = data[teacherRecRowIndex + 1];
+                    teacherRecommendations = '';
+                    for (let j = 0; j < recRow.length; j++) {
+                        if (recRow[j] && recRow[j].trim() !== '') {
+                            teacherRecommendations = recRow[j].trim();
+                            break;
+                        }
+                    }
                 }
                 
                 if (characters.length === 0) {
@@ -853,7 +877,7 @@
                     days: days,
                     characters: characters,
                     scores: scores,
-                    teacherRecommendations: teacherRecommendations.trim()
+                    teacherRecommendations: teacherRecommendations
                 };
             } catch (error) {
                 console.error(`Error parsing ${filename}:`, error);
@@ -2000,7 +2024,7 @@
                         <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 20px; border-radius: 10px; border-left: 4px solid #667eea;">
                             <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 15px;">👨‍🏫 Teacher Recommendations</h3>
                             <p style="font-size: 1.1em; line-height: 1.8; color: #333;">
-                                ${data.teacherRecommendations || 'Great work today! Keep practicing consistently to maintain and improve your progress.'}
+                                ${data.teacherRecommendations && data.teacherRecommendations.trim() !== '' ? escapeHtml(data.teacherRecommendations) : 'No specific recommendations at this time. Keep up the great work!'}
                             </p>
                         </div>
                     </div>
@@ -2051,7 +2075,7 @@
                     <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 20px; border-radius: 10px; border-left: 4px solid #667eea;">
                         <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 15px;">👨‍🏫 Teacher Recommendations</h3>
                         <p style="font-size: 1.1em; line-height: 1.8; color: #333;">
-                            ${data.teacherRecommendations || 'Great work! Keep practicing consistently to maintain and improve your progress.'}
+                            ${data.teacherRecommendations && data.teacherRecommendations.trim() !== '' ? escapeHtml(data.teacherRecommendations) : 'No specific recommendations at this time. Keep up the great work!'}
                         </p>
                     </div>
                 </div>
