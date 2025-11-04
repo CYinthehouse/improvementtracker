@@ -43,6 +43,12 @@
             text-align: center;
         }
 
+        .header-logo {
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
         .header h1 {
             font-size: 2.5em;
             font-weight: 300;
@@ -60,6 +66,27 @@
             padding: 30px;
             background: #f8f9fa;
             border-bottom: 1px solid #e0e0e0;
+        }
+
+        .character-images {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .character-images img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .character-images img:hover {
+            opacity: 1;
         }
 
         .file-input-wrapper {
@@ -112,6 +139,34 @@
         .process-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        .new-student-btn {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .new-student-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(17, 153, 142, 0.4);
+        }
+
+        .new-student-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-input-label.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
         }
 
         .mode-selector {
@@ -532,18 +587,30 @@
 <body>
     <div class="container">
         <div class="header">
+            <img src="https://cdn.shopify.com/s/files/1/0674/6747/7282/files/logo555.png?v=1757969221" alt="Korean Learning Logo" class="header-logo">
             <h1>📚 Korean Learning Progress Tracker</h1>
             <div class="subtitle">Comprehensive Student Improvement Analytics</div>
         </div>
 
         <div class="upload-section">
+            <div class="character-images">
+                <img src="https://cdn.shopify.com/s/files/1/0674/6747/7282/files/4b45bdfbd4b83c4f97f7c58cd8e49623_31e72055-468c-4c6f-82a0-f79734707937.png?v=1731621340" alt="Character 1">
+                <img src="https://cdn.shopify.com/s/files/1/0674/6747/7282/files/9025db2a75c6ad48c96d559511317306.png?v=1731621340" alt="Character 2">
+                <img src="https://cdn.shopify.com/s/files/1/0674/6747/7282/files/f27348ba976bcb866a09d5e281c36e55.png?v=1731621339" alt="Character 3">
+                <img src="https://cdn.shopify.com/s/files/1/0674/6747/7282/files/96af0d4d3db9c09d03897cd19f41ec8c.png?v=1731621340" alt="Character 4">
+                <img src="https://cdn.shopify.com/s/files/1/0674/6747/7282/files/ba361cb80f08dfce6c255ebc1dc8b0aa.png?v=1731621340" alt="Character 5">
+                <img src="https://cdn.shopify.com/s/files/1/0674/6747/7282/files/71dc38903bd85b1734e6c742fb694eec.png?v=1731621340" alt="Character 6">
+            </div>
             <div class="file-input-wrapper">
-                <label for="fileInput" class="file-input-label">
+                <label for="fileInput" class="file-input-label" id="fileInputLabel">
                     📂 Choose CSV Files (Max 10)
                 </label>
                 <input type="file" id="fileInput" multiple accept=".csv">
                 <button id="processBtn" class="process-btn" onclick="processFiles()">
                     🚀 Analyze Progress
+                </button>
+                <button id="newStudentBtn" class="new-student-btn" onclick="resetForNewStudent()" disabled>
+                    🔄 New Student
                 </button>
             </div>
             <div class="mode-selector">
@@ -585,6 +652,36 @@
             comparisonImprovement: null,
             comparisonMastery: null
         };
+
+        function resetForNewStudent() {
+            // Clear all data
+            studentsData = {};
+            currentStudent = null;
+            
+            // Clear file input
+            document.getElementById('fileInput').value = '';
+            
+            // Clear tabs and content
+            document.getElementById('studentTabs').innerHTML = '';
+            document.getElementById('reportsContainer').innerHTML = '';
+            document.getElementById('comparisonSection').innerHTML = '';
+            
+            // Show empty state
+            document.querySelector('.empty-state').style.display = 'block';
+            
+            // Enable file input and process button
+            const fileInputLabel = document.getElementById('fileInputLabel');
+            const processBtn = document.getElementById('processBtn');
+            const newStudentBtn = document.getElementById('newStudentBtn');
+            
+            fileInputLabel.classList.remove('disabled');
+            processBtn.disabled = false;
+            newStudentBtn.disabled = true;
+            
+            // Enable mode buttons
+            document.getElementById('weeklyBtn').disabled = false;
+            document.getElementById('dailyBtn').disabled = false;
+        }
 
         function setMode(mode) {
             analysisMode = mode;
@@ -647,6 +744,15 @@
                                 displayStudentTabs();
                                 if (Object.keys(studentsData).length > 0) {
                                     showStudent(Object.keys(studentsData)[0]);
+                                    
+                                    // Disable file input and process button after successful analysis
+                                    const fileInputLabel = document.getElementById('fileInputLabel');
+                                    const processBtn = document.getElementById('processBtn');
+                                    const newStudentBtn = document.getElementById('newStudentBtn');
+                                    
+                                    fileInputLabel.classList.add('disabled');
+                                    processBtn.disabled = true;
+                                    newStudentBtn.disabled = false;
                                 }
                             }
                         },
@@ -1843,57 +1949,6 @@
             'ㅣ': 'https://www.loom.com/share/23bf0e1e1be142f89d92cc827032c0a5'
         };
 
-        // Romanization mapping for Hangul characters
-        const hangulToRoman = {
-            // Consonants
-            'ㄱ': 'ㄱ',
-            'ㄴ': 'ㄴ',
-            'ㄷ': 'ㄷ',
-            'ㄹ': 'ㄹ',
-            'ㅁ': 'ㅁ',
-            'ㅂ': 'ㅂ',
-            'ㅅ': 'ㅅ',
-            'ㅇ': 'ㅇ',
-            'ㅈ': 'ㅈ',
-            'ㅊ': 'ㅊ',
-            'ㅋ': 'ㅋ',
-            'ㅌ': 'ㅌ',
-            'ㅍ': 'ㅍ',
-            'ㅎ': 'ㅎ',
-            'ㅆ': 'ㅆ',
-            'ㅉ': 'ㅉ',
-            'ㄲ': 'ㄲ',
-            'ㄸ': 'ㄸ',
-            'ㅃ': 'ㅃ',
-            
-            // Vowels
-            'ㅏ': 'ㅏ',
-            'ㅐ': 'ㅐ',
-            'ㅑ': 'ㅑ',
-            'ㅒ': 'ㅒ',
-            'ㅓ': 'ㅓ',
-            'ㅔ': 'ㅔ',
-            'ㅕ': 'ㅕ',
-            'ㅖ': 'ㅖ',
-            'ㅗ': 'ㅗ',
-            'ㅘ': 'ㅘ',
-            'ㅙ': 'ㅙ',
-            'ㅚ': 'ㅚ',
-            'ㅛ': 'ㅛ',
-            'ㅜ': 'ㅜ',
-            'ㅝ': 'ㅝ',
-            'ㅞ': 'ㅞ',
-            'ㅟ': 'ㅟ',
-            'ㅠ': 'ㅠ',
-            'ㅡ': 'ㅡ',
-            '의': '의',
-            'ㅣ': 'ㅣ'
-        };
-
-        function getCharacterName(char) {
-            return hangulToRoman[char] || char;
-        }
-
         function getVideoLinkHTML(char, score) {
             // Only show video links if score is 40% or below (1/5 = 20%, 2/5 = 40%)
             if (score !== undefined && score > 40) {
@@ -1906,59 +1961,6 @@
                 return `<a href="${link}" target="_blank" class="video-link" data-video-url="${link}" data-char="${char}" style="color: #667eea; text-decoration: none; font-weight: 600; margin-left: 10px; display: inline-block; padding: 5px 10px; background: rgba(102, 126, 234, 0.1); border-radius: 5px; border: 1px solid #667eea;">🎥 Watch Video</a>`;
             }
             return '';
-        }
-
-        function collectVideoLinkPositions(container) {
-            const links = container.querySelectorAll('.video-link');
-            const positions = [];
-            
-            links.forEach(link => {
-                const rect = link.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-                
-                positions.push({
-                    url: link.getAttribute('data-video-url'),
-                    char: link.getAttribute('data-char'),
-                    x: rect.left - containerRect.left,
-                    y: rect.top - containerRect.top,
-                    width: rect.width,
-                    height: rect.height
-                });
-            });
-            
-            return positions;
-        }
-
-        function addClickableLinksToPDF(pdf, linkPositions, containerWidth, scale, pageWidth, pageHeight, margin) {
-            const contentWidth = pageWidth - (2 * margin);
-            const contentHeight = pageHeight - (2 * margin);
-            
-            // Conversion factor: container pixels to PDF mm
-            const pxToMM = contentWidth / containerWidth;
-            
-            linkPositions.forEach(link => {
-                // Convert link position from container px to PDF mm
-                const linkXmm = link.x * pxToMM;
-                const linkYmm = link.y * pxToMM;
-                const linkWidthMM = link.width * pxToMM;
-                const linkHeightMM = link.height * pxToMM;
-                
-                // Determine which page this link is on
-                const pageIndex = Math.floor(linkYmm / contentHeight);
-                
-                // Calculate Y position on the specific page
-                const yOnPage = (linkYmm % contentHeight) + margin;
-                const xPos = linkXmm + margin;
-                
-                // Set the correct page (pages are 1-indexed after first page is created)
-                if (pageIndex > 0 && pageIndex < pdf.internal.pages.length - 1) {
-                    pdf.setPage(pageIndex + 1);
-                }
-                
-                // Add invisible clickable rectangle
-                console.log(`Adding link on page ${pageIndex + 1}: ${link.char} at (${xPos.toFixed(2)}, ${yOnPage.toFixed(2)})`);
-                pdf.link(xPos, yOnPage, linkWidthMM, linkHeightMM, { url: link.url });
-            });
         }
 
         function generatePDFSummarySection(data) {
@@ -2272,64 +2274,182 @@
                     pageNum++;
                 }
 
-                // Add a separate "Video Resources" page with clickable links
+                // Add a separate "Video Resources" page with clickable links using HTML rendering
                 if (charactersNeedingVideos.length > 0) {
-                    pdf.addPage();
-                    pdf.setFontSize(20);
-                    pdf.setTextColor(102, 126, 234);
-                    pdf.text('Video Resources for Practice', 20, 20);
-                    
-                    pdf.setFontSize(12);
-                    pdf.setTextColor(0, 0, 0);
-                    pdf.text('Click on any link below to watch the instructional video:', 20, 30);
-                    pdf.text('(These characters scored 40% or below and need extra practice)', 20, 38);
-                    
-                    let yPos = 50;
-                    const lineHeight = 12;
+                    if (statusEl) {
+                        statusEl.textContent = `Adding video resources page for ${studentName}...`;
+                    }
                     
                     // Sort characters by score (lowest first)
                     charactersNeedingVideos.sort((a, b) => a.score - b.score);
                     
-                    charactersNeedingVideos.forEach((item, index) => {
-                        const romanName = getCharacterName(item.char);
-                        
-                        // Check if we need a new page
-                        if (yPos > 265) {
-                            pdf.addPage();
-                            yPos = 20;
-                        }
-                        
-                        // Draw the character name in larger font with score
-                        pdf.setFontSize(14);
-                        pdf.setTextColor(0, 0, 0);
-                        pdf.text(`${item.char} (${romanName}) - Current Score: ${item.score.toFixed(1)}%`, 20, yPos);
-                        
-                        // Draw the link text in blue
-                        pdf.setFontSize(11);
-                        pdf.setTextColor(102, 126, 234);
-                        const linkText = '> Click here to watch video';
-                        pdf.textWithLink(linkText, 25, yPos + 5, { url: item.url });
-                        
-                        // Draw the actual URL in smaller text
-                        pdf.setFontSize(8);
-                        pdf.setTextColor(100, 100, 100);
-                        pdf.text(item.url, 25, yPos + 9);
-                        
-                        pdf.setTextColor(0, 0, 0);
-                        yPos += lineHeight + 3;
-                    });
-                } else {
-                    // Add a page saying no videos needed
-                    pdf.addPage();
-                    pdf.setFontSize(20);
-                    pdf.setTextColor(102, 126, 234);
-                    pdf.text('Video Resources for Practice', 20, 20);
+                    // Create HTML container for video resources page
+                    const videoPageContainer = document.createElement('div');
+                    videoPageContainer.style.width = '1200px';
+                    videoPageContainer.style.background = 'white';
+                    videoPageContainer.style.padding = '40px';
+                    videoPageContainer.style.position = 'absolute';
+                    videoPageContainer.style.left = '-9999px';
+                    videoPageContainer.style.fontFamily = "'Noto Sans KR', sans-serif";
                     
-                    pdf.setFontSize(14);
-                    pdf.setTextColor(0, 0, 0);
-                    pdf.text('Great news! All characters scored above 40%.', 20, 40);
-                    pdf.text('No additional video practice needed at this time.', 20, 52);
-                    pdf.text('Keep up the excellent work!', 20, 64);
+                    videoPageContainer.innerHTML = `
+                        <div style="background: white; padding: 30px;">
+                            <h2 style="color: #667eea; font-size: 2em; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 15px;">
+                                🎥 Video Resources for Practice
+                            </h2>
+                            <p style="font-size: 1.1em; color: #666; margin-bottom: 10px; line-height: 1.8;">
+                                Click on any link below to watch the instructional video:
+                            </p>
+                            <p style="font-size: 1em; color: #F57C00; margin-bottom: 30px; line-height: 1.8;">
+                                (These characters scored 40% or below and need extra practice)
+                            </p>
+                            
+                            <div style="display: grid; gap: 20px;">
+                                ${charactersNeedingVideos.map((item, index) => `
+                                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid ${item.score <= 20 ? '#f45c43' : '#FFC107'};">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                            <div>
+                                                <span style="font-size: 2em; font-weight: 600; color: #333; margin-right: 15px;">${item.char}</span>
+                                                <span style="font-size: 1.2em; color: #666;">Current Score: <strong style="color: ${item.score <= 20 ? '#f45c43' : '#FFC107'};">${item.score.toFixed(1)}%</strong></span>
+                                            </div>
+                                        </div>
+                                        <div style="margin-top: 10px;">
+                                            <a href="${item.url}" style="color: #667eea; font-size: 1.1em; font-weight: 600; text-decoration: none; display: inline-block; padding: 8px 16px; background: rgba(102, 126, 234, 0.1); border-radius: 5px; border: 2px solid #667eea;">
+                                                ▶ Click here to watch video
+                                            </a>
+                                        </div>
+                                        <div style="margin-top: 8px; font-size: 0.85em; color: #999; word-break: break-all;">
+                                            ${item.url}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(videoPageContainer);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
+                    // Capture the video resources page
+                    const videoCanvas = await html2canvas(videoPageContainer, {
+                        scale: scale,
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        windowWidth: 1200
+                    });
+                    
+                    document.body.removeChild(videoPageContainer);
+                    
+                    const videoImgData = videoCanvas.toDataURL('image/png', 1.0);
+                    const videoImgHeightMM = videoCanvas.height / pxPerMM;
+                    
+                    // Add pages for video resources
+                    let videoY = 0;
+                    let videoRemaining = videoImgHeightMM;
+                    
+                    while (videoRemaining > 0) {
+                        const videoPageCanvas = document.createElement('canvas');
+                        videoPageCanvas.width = videoCanvas.width;
+                        const availableHeight = pageHeight - (2 * margin);
+                        const pageHeightPx = Math.min(videoRemaining * pxPerMM, availableHeight * pxPerMM);
+                        videoPageCanvas.height = pageHeightPx;
+                        const videoPageCtx = videoPageCanvas.getContext('2d');
+                        
+                        videoPageCtx.imageSmoothingEnabled = true;
+                        videoPageCtx.imageSmoothingQuality = 'high';
+                        
+                        videoPageCtx.drawImage(
+                            videoCanvas,
+                            0, videoY * pxPerMM,
+                            videoCanvas.width, pageHeightPx,
+                            0, 0,
+                            videoCanvas.width, pageHeightPx
+                        );
+                        
+                        const videoPageImg = videoPageCanvas.toDataURL('image/png', 1.0);
+                        pdf.addPage();
+                        
+                        const imgHeight = Math.min(availableHeight, videoRemaining);
+                        pdf.addImage(videoPageImg, 'PNG', margin, margin, contentWidth, imgHeight);
+                        
+                        videoY += availableHeight;
+                        videoRemaining -= availableHeight;
+                    }
+                    
+                    // Now add clickable link annotations on top of the link areas
+                    // We need to calculate approximate positions based on the layout
+                    const linkStartY = 120; // Approximate starting Y position in mm
+                    const linkSpacing = 35; // Approximate spacing between links in mm
+                    
+                    charactersNeedingVideos.forEach((item, index) => {
+                        const linkY = linkStartY + (index * linkSpacing);
+                        const pageIndex = Math.floor(linkY / pageHeight);
+                        const yOnPage = (linkY % pageHeight);
+                        
+                        // Set to the correct page
+                        if (pageIndex < pdf.internal.pages.length - 1) {
+                            pdf.setPage(pdf.internal.pages.length - charactersNeedingVideos.length + pageIndex);
+                            // Add invisible clickable rectangle over the link button area
+                            pdf.link(40, yOnPage, 80, 10, { url: item.url });
+                        }
+                    });
+                    
+                } else {
+                    // Add a page saying no videos needed using HTML rendering
+                    if (statusEl) {
+                        statusEl.textContent = `Adding completion message for ${studentName}...`;
+                    }
+                    
+                    const noVideoPageContainer = document.createElement('div');
+                    noVideoPageContainer.style.width = '1200px';
+                    noVideoPageContainer.style.background = 'white';
+                    noVideoPageContainer.style.padding = '40px';
+                    noVideoPageContainer.style.position = 'absolute';
+                    noVideoPageContainer.style.left = '-9999px';
+                    noVideoPageContainer.style.fontFamily = "'Noto Sans KR', sans-serif";
+                    
+                    noVideoPageContainer.innerHTML = `
+                        <div style="background: white; padding: 60px; text-align: center;">
+                            <h2 style="color: #667eea; font-size: 2.5em; margin-bottom: 30px;">
+                                🎥 Video Resources for Practice
+                            </h2>
+                            <div style="background: linear-gradient(135deg, rgba(56, 239, 125, 0.1) 0%, rgba(17, 153, 142, 0.1) 100%); padding: 40px; border-radius: 15px; border: 3px solid #11998e;">
+                                <div style="font-size: 3em; margin-bottom: 20px;">🎉</div>
+                                <h3 style="color: #11998e; font-size: 1.8em; margin-bottom: 20px;">Great news!</h3>
+                                <p style="font-size: 1.3em; color: #333; line-height: 1.8; margin-bottom: 15px;">
+                                    All characters scored above 40%.
+                                </p>
+                                <p style="font-size: 1.3em; color: #333; line-height: 1.8; margin-bottom: 15px;">
+                                    No additional video practice needed at this time.
+                                </p>
+                                <p style="font-size: 1.5em; color: #11998e; font-weight: 600; margin-top: 20px;">
+                                    Keep up the excellent work!
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(noVideoPageContainer);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
+                    const noVideoCanvas = await html2canvas(noVideoPageContainer, {
+                        scale: scale,
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        windowWidth: 1200
+                    });
+                    
+                    document.body.removeChild(noVideoPageContainer);
+                    
+                    const noVideoImgData = noVideoCanvas.toDataURL('image/png', 1.0);
+                    pdf.addPage();
+                    
+                    const noVideoImgHeightMM = noVideoCanvas.height / pxPerMM;
+                    pdf.addImage(noVideoImgData, 'PNG', margin, margin, contentWidth, Math.min(pageHeight - (2 * margin), noVideoImgHeightMM));
                 }
 
                 pdf.save(`${studentName}_Progress_Report.pdf`);
