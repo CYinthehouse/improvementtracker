@@ -780,7 +780,7 @@
 
         function parseCSVData(data, filename) {
             try {
-                let studentName = filename.replace('.csv', '').replace('Student_improvement_Metric_-_', '').replace('Student_Improvement_Metric_-_', '');
+                let studentName = filename.replace('.csv', '').replace('Student_improvement_Metric_-_', '').replace('Student_Improvement_Metric_-_', '').replace('Academy_Sheet_-_', '');
                 
                 if (!data || data.length < 3) {
                     console.error(`Invalid CSV structure for ${filename}`);
@@ -811,6 +811,18 @@
                 for (let i = 2; i < endCharacterRow; i++) {
                     if (data[i] && data[i][0] && data[i][0].trim() !== '') {
                         const char = data[i][0].trim();
+                        
+                        // Skip section headers (lines ending with ':' or containing only labels)
+                        if (char.endsWith(':') || char.toLowerCase() === 'vowels' || char.toLowerCase() === 'consonants') {
+                            continue;
+                        }
+                        
+                        // Skip if the row appears to be completely empty (all cells empty)
+                        const hasAnyData = data[i].slice(1, days.length + 1).some(cell => cell && cell.trim() !== '');
+                        if (!hasAnyData) {
+                            continue;
+                        }
+                        
                         characters.push(char);
                         scores[char] = [];
                         
