@@ -817,8 +817,15 @@
                             continue;
                         }
                         
-                        // Skip if the row appears to be completely empty (all cells empty)
-                        const hasAnyData = data[i].slice(1, days.length + 1).some(cell => cell && cell.trim() !== '');
+                        // Skip if the row appears to be completely empty (all cells empty after the character name)
+                        let hasAnyData = false;
+                        for (let j = 1; j < data[i].length; j++) {
+                            if (data[i][j] && data[i][j].toString().trim() !== '') {
+                                hasAnyData = true;
+                                break;
+                            }
+                        }
+                        
                         if (!hasAnyData) {
                             continue;
                         }
@@ -829,9 +836,14 @@
                         for (let j = 1; j <= days.length; j++) {
                             let gradeStr = data[i][j];
                             
-                            // If cell is empty or undefined, assume 100% (5/5)
+                            // Convert to string if it's a number
+                            if (typeof gradeStr === 'number') {
+                                gradeStr = gradeStr.toString();
+                            }
+                            
+                            // If cell is empty or undefined, mark as null (no data)
                             if (!gradeStr || gradeStr.trim() === '') {
-                                scores[char].push(100);
+                                scores[char].push(null);
                                 continue;
                             }
                             
@@ -848,10 +860,10 @@
                                         const percentage = (numerator / denominator) * 100;
                                         scores[char].push(percentage);
                                     } else {
-                                        scores[char].push(100); // Default to 100% if invalid
+                                        scores[char].push(null);
                                     }
                                 } else {
-                                    scores[char].push(100); // Default to 100% if invalid format
+                                    scores[char].push(null);
                                 }
                             } else {
                                 // Just a number - assume out of 5
@@ -860,7 +872,7 @@
                                     const percentage = (numerator / 5) * 100;
                                     scores[char].push(percentage);
                                 } else {
-                                    scores[char].push(100); // Default to 100% if not a number
+                                    scores[char].push(null);
                                 }
                             }
                         }
@@ -868,7 +880,6 @@
                 }
                 
                 if (teacherRecRowIndex > 0 && data[teacherRecRowIndex + 1]) {
-                    // Try to get teacher recommendations from the first non-empty cell in the next row
                     const recRow = data[teacherRecRowIndex + 1];
                     teacherRecommendations = '';
                     for (let j = 0; j < recRow.length; j++) {
@@ -905,44 +916,74 @@
                 statistics: {}
             };
             
+            // Calculate daily averages, skipping null values
             for (let i = 0; i < studentData.days.length; i++) {
                 let daySum = 0;
                 let count = 0;
                 for (let char of studentData.characters) {
-                    if (studentData.scores[char] && studentData.scores[char][i] !== undefined) {
+                    if (studentData.scores[char] && studentData.scores[char][i] !== null && studentData.scores[char][i] !== undefined) {
                         daySum += studentData.scores[char][i];
                         count++;
                     }
                 }
-                processed.dailyAverages.push(count > 0 ? daySum / count : 0);
+                processed.dailyAverages.push(count > 0 ? daySum / count : null);
             }
             
+            // Calculate character improvements, handling null values
             for (let char of studentData.characters) {
                 const scores = studentData.scores[char];
                 if (scores && scores.length > 0) {
-                    const startScore = scores[0];
-                    const endScore = scores[scores.length - 1];
+                    // Get first non-null score
+                    let startScore = null;
+                    for (let i = 0; i < scores.length; i++) {
+                        if (scores[i] !== null && scores[i] !== undefined) {
+                            startScore = scores[i];
+                            break;
+                        }
+                    }
+                    
+                    // Get last non-null score
+                    let endScore = null;
+                    for (let i = scores.length - 1; i >= 0; i--) {
+                        if (scores[i] !== null && scores[i] !== undefined) {
+                            endScore = scores[i];
+                            break;
+                        }
+                    }
+                    
+                    // Check if character has any data at all
+                    const hasData = startScore !== null && endScore !== null;
+                    
                     processed.characterImprovements[char] = {
                         start: startScore,
                         end: endScore,
-                        improvement: endScore - startScore,
+                        improvement: hasData ? endScore - startScore : null,
                         mastered: endScore === 100,
-                        scores: scores
+                        scores: scores,
+                        hasData: hasData
                     };
                 }
             }
             
-            const startAvg = processed.dailyAverages[0] || 0;
-            const endAvg = processed.dailyAverages[processed.dailyAverages.length - 1] || 0;
+            // Calculate statistics, only using days/characters with data
+            const daysWithData = processed.dailyAverages.filter(avg => avg !== null && avg !== undefined);
+            const startAvg = daysWithData.length > 0 ? daysWithData[0] : 0;
+            const endAvg = daysWithData.length > 0 ? daysWithData[daysWithData.length - 1] : 0;
             const totalImprovement = endAvg - startAvg;
-            const masteredCount = Object.values(processed.characterImprovements).filter(c => c.mastered).length;
             
+            const charactersWithData = Object.values(processed.characterImprovements).filter(c => c.hasData);
+            const masteredCount = charactersWithData.filter(c => c.mastered).length;
+            
+            // Get lowest scores (only from characters with data)
             const lowestScores = Object.entries(processed.characterImprovements)
+                .filter(([char, data]) => data.hasData)
                 .map(([char, data]) => ({char, ...data}))
                 .sort((a, b) => a.end - b.end)
                 .slice(0, 5);
             
+            // Get best improvements (only from characters with data)
             const bestImprovements = Object.entries(processed.characterImprovements)
+                .filter(([char, data]) => data.hasData)
                 .map(([char, data]) => ({char, ...data}))
                 .sort((a, b) => b.improvement - a.improvement)
                 .slice(0, 5);
@@ -952,8 +993,9 @@
                 endAverage: endAvg,
                 totalImprovement: totalImprovement,
                 masteredCount: masteredCount,
-                totalCharacters: studentData.characters.length,
-                masteryRate: (masteredCount / studentData.characters.length * 100),
+                totalCharacters: charactersWithData.length,
+                totalCharactersIncludingNoData: studentData.characters.length,
+                masteryRate: charactersWithData.length > 0 ? (masteredCount / charactersWithData.length * 100) : 0,
                 lowestScores: lowestScores,
                 bestImprovements: bestImprovements
             };
@@ -1048,6 +1090,33 @@
         }
 
         function generateDailyReport(data, stats, dayName) {
+            // For daily mode, find which day has data
+            let dayWithDataIndex = -1;
+            let dayWithDataName = '';
+            
+            for (let i = 0; i < data.dailyAverages.length; i++) {
+                if (data.dailyAverages[i] !== null && data.dailyAverages[i] !== undefined) {
+                    dayWithDataIndex = i;
+                    dayWithDataName = data.days[i];
+                    break;
+                }
+            }
+            
+            // If no day has data, show error message
+            if (dayWithDataIndex === -1) {
+                return `
+                    <div class="student-report active" data-student="${data.name}">
+                        <div style="text-align: center; padding: 60px; color: #999;">
+                            <h2>No Data Available</h2>
+                            <p>This file does not contain any score data for daily analysis.</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Get the daily average for the day with data
+            const dailyAverage = data.dailyAverages[dayWithDataIndex];
+            
             return `
                 <div class="student-report active" data-student="${data.name}">
                     <div class="download-section">
@@ -1067,15 +1136,15 @@
                     
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px; text-align: center;">
                         <h2 style="font-size: 2em; margin-bottom: 10px;">📆 Daily Progress Report</h2>
-                        <p style="font-size: 1.3em; opacity: 0.9;">${dayName}</p>
+                        <p style="font-size: 1.3em; opacity: 0.9;">${dayWithDataName}</p>
                     </div>
                     
                     <div class="stats-grid">
                         <div class="stat-card positive">
                             <div class="label">Daily Average</div>
-                            <div class="value">${stats.startAverage.toFixed(1)}%</div>
+                            <div class="value">${dailyAverage.toFixed(1)}%</div>
                             <div class="change">Overall Performance</div>
-                            <div class="description">Average mastery across all characters today</div>
+                            <div class="description">Average mastery across all characters with data</div>
                         </div>
                         
                         <div class="stat-card positive">
@@ -1140,27 +1209,27 @@
                             <div class="label">Starting Average</div>
                             <div class="value">${stats.startAverage.toFixed(1)}%</div>
                             <div class="change">Day 1 Baseline</div>
-                            <div class="description">Average mastery across all characters on first day</div>
+                            <div class="description">Average mastery on first day with data</div>
                         </div>
                         
                         <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
                             <div class="label">Final Average</div>
                             <div class="value">${stats.endAverage.toFixed(1)}%</div>
                             <div class="change">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)}% Total</div>
-                            <div class="description">Average mastery across all characters on last day</div>
+                            <div class="description">Average mastery on last day with data</div>
                         </div>
                         
                         <div class="stat-card positive">
                             <div class="label">Characters Mastered</div>
                             <div class="value">${stats.masteredCount}/${stats.totalCharacters}</div>
                             <div class="change">${stats.masteryRate.toFixed(1)}% Mastery Rate</div>
-                            <div class="description">Characters achieving 100% mastery</div>
+                            <div class="description">Characters achieving 100% mastery (${stats.totalCharactersIncludingNoData - stats.totalCharacters} have no data)</div>
                         </div>
                         
                         <div class="stat-card">
                             <div class="label">Weekly Improvement</div>
                             <div class="value">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)}%</div>
-                            <div class="change">From Day 1 to Day 5</div>
+                            <div class="change">From First to Last Day</div>
                             <div class="description">Overall progress made this week</div>
                         </div>
                     </div>
@@ -1228,6 +1297,19 @@
             
             return data.characters.map(char => {
                 const improvement = data.characterImprovements[char];
+                
+                // Check if character has no data
+                if (!improvement.hasData) {
+                    return `
+                        <div class="character-card" style="background: #e0e0e0; border-color: #999;">
+                            <div class="character-name" style="color: #666;">${char}</div>
+                            <div class="character-progress" style="color: #999;">
+                                <div>No Data</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
                 const finalScore = improvement.end;
                 
                 let statusClass = '';
@@ -1353,6 +1435,14 @@
                         insights.push(`• ${slowImprovers.length} character(s) showing slow improvement velocity. Consider alternative teaching methods or additional resources.`);
                     }
                 }
+            } else {
+                insights.push('No characters with data need focused attention at this time.');
+            }
+            
+            // Add note about characters with no data
+            const charactersWithNoData = stats.totalCharactersIncludingNoData - stats.totalCharacters;
+            if (charactersWithNoData > 0) {
+                insights.push(`<br><strong>📋 Note:</strong> ${charactersWithNoData} character(s) have no data for this period and are not included in statistics.`);
             }
             
             if (stats.masteryRate >= 80) {
@@ -1368,10 +1458,14 @@
             
             const ctx = canvas.getContext('2d');
             
-            const characterScores = data.characters.map(char => ({
-                char: char,
-                score: data.characterImprovements[char].end
-            })).sort((a, b) => b.score - a.score);
+            // Only show characters with data
+            const characterScores = data.characters
+                .filter(char => data.characterImprovements[char].hasData)
+                .map(char => ({
+                    char: char,
+                    score: data.characterImprovements[char].end
+                }))
+                .sort((a, b) => b.score - a.score);
             
             new Chart(ctx, {
                 type: 'bar',
@@ -1417,13 +1511,24 @@
                 chartInstances.progress.destroy();
             }
             
+            // Filter out days with null data
+            const daysWithData = [];
+            const averagesWithData = [];
+            
+            data.days.forEach((day, index) => {
+                if (data.dailyAverages[index] !== null && data.dailyAverages[index] !== undefined) {
+                    daysWithData.push(day);
+                    averagesWithData.push(data.dailyAverages[index]);
+                }
+            });
+            
             chartInstances.progress = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: data.days,
+                    labels: daysWithData,
                     datasets: [{
                         label: 'Average Score',
-                        data: data.dailyAverages,
+                        data: averagesWithData,
                         borderColor: 'rgb(102, 126, 234)',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         borderWidth: 3,
@@ -1510,23 +1615,40 @@
             }
             
             const bubbleData = [];
+            let xIndex = 0;
+            
             data.days.forEach((day, dayIndex) => {
                 const dayAverage = data.dailyAverages[dayIndex];
                 
-                const characterBreakdown = data.characters.map(char => {
-                    const score = data.scores[char][dayIndex];
-                    return `${char}: ${score.toFixed(0)}%`;
-                });
-                
-                bubbleData.push({
-                    x: dayIndex,
-                    y: dayAverage,
-                    r: 20,
-                    dayAverage: dayAverage,
-                    day: day,
-                    breakdown: characterBreakdown
-                });
+                // Only include days with data
+                if (dayAverage !== null && dayAverage !== undefined) {
+                    const characterBreakdown = data.characters
+                        .filter(char => {
+                            const score = data.scores[char][dayIndex];
+                            return score !== null && score !== undefined;
+                        })
+                        .map(char => {
+                            const score = data.scores[char][dayIndex];
+                            return `${char}: ${score.toFixed(0)}%`;
+                        });
+                    
+                    bubbleData.push({
+                        x: xIndex,
+                        y: dayAverage,
+                        r: 20,
+                        dayAverage: dayAverage,
+                        day: day,
+                        breakdown: characterBreakdown
+                    });
+                    
+                    xIndex++;
+                }
             });
+            
+            // Get only days with data for labels
+            const daysWithData = data.days.filter((day, index) => 
+                data.dailyAverages[index] !== null && data.dailyAverages[index] !== undefined
+            );
             
             chartInstances.heatmap = new Chart(ctx, {
                 type: 'bubble',
@@ -1549,7 +1671,7 @@
                     scales: {
                         x: {
                             type: 'category',
-                            labels: data.days,
+                            labels: daysWithData,
                             grid: { display: false }
                         },
                         y: {
@@ -1594,18 +1716,32 @@
                 chartInstances.improvementTimeline.destroy();
             }
             
-            const improvementFromBaseline = data.dailyAverages.map((avg, index) => {
-                if (index === 0) return 0;
-                return avg - data.dailyAverages[0];
+            // Filter to only days with data
+            const daysWithData = [];
+            const improvementsWithData = [];
+            let baselineAverage = null;
+            
+            data.days.forEach((day, index) => {
+                const avg = data.dailyAverages[index];
+                if (avg !== null && avg !== undefined) {
+                    if (baselineAverage === null) {
+                        baselineAverage = avg;
+                        daysWithData.push(day);
+                        improvementsWithData.push(0);
+                    } else {
+                        daysWithData.push(day);
+                        improvementsWithData.push(avg - baselineAverage);
+                    }
+                }
             });
             
             chartInstances.improvementTimeline = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: data.days,
+                    labels: daysWithData,
                     datasets: [{
                         label: 'Improvement from Baseline',
-                        data: improvementFromBaseline,
+                        data: improvementsWithData,
                         borderColor: 'rgb(56, 239, 125)',
                         backgroundColor: 'rgba(56, 239, 125, 0.1)',
                         borderWidth: 3,
@@ -2199,17 +2335,25 @@
                         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
                             ${data.characters.map(char => {
                                 const improvement = data.characterImprovements[char];
-                                const finalScore = improvement.end;
-                                let borderColor = '#38ef7d';
-                                if (finalScore <= 30) borderColor = '#f45c43';
-                                else if (finalScore <= 50) borderColor = '#FFC107';
+                                
+                                let borderColor = '#999'; // Gray for no data
+                                if (improvement.hasData) {
+                                    const finalScore = improvement.end;
+                                    if (finalScore <= 30) borderColor = '#f45c43';
+                                    else if (finalScore <= 50) borderColor = '#FFC107';
+                                    else borderColor = '#38ef7d';
+                                }
                                 
                                 const isDaily = analysisMode === 'daily';
                                 
                                 return `
                                     <div style="background: white; padding: 15px; border-radius: 10px; text-align: center; border: 2px solid ${borderColor};">
                                         <div style="font-size: 2em; margin-bottom: 10px; font-weight: 500;">${char}</div>
-                                        ${isDaily ? `
+                                        ${!improvement.hasData ? `
+                                            <div style="font-size: 0.85em; color: #999;">
+                                                No Data
+                                            </div>
+                                        ` : isDaily ? `
                                             <div style="font-size: 0.85em; color: #666;">
                                                 Score: ${improvement.end.toFixed(0)}% mastery
                                             </div>
