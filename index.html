@@ -2478,27 +2478,22 @@
                                 🎥 Video Resources for Practice
                             </h2>
                             <p style="font-size: 1.1em; color: #666; margin-bottom: 10px; line-height: 1.8;">
-                                Click on any link below to watch the instructional video:
+                                Video links for characters that need extra practice:
                             </p>
-                            <p style="font-size: 1em; color: #F57C00; margin-bottom: 30px; line-height: 1.8;">
+                            <p style="font-size: 1em; color: #F57C00; margin-bottom: 50px; line-height: 1.8;">
                                 (These characters scored 40% or below and need extra practice)
                             </p>
                             
-                            <div style="display: grid; gap: 20px;">
+                            <div style="display: grid; gap: 45px;">
                                 ${charactersNeedingVideos.map((item, index) => `
-                                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid ${item.score <= 20 ? '#f45c43' : '#FFC107'};">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                    <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; border-left: 4px solid ${item.score <= 20 ? '#f45c43' : '#FFC107'}; margin-bottom: 5px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                                             <div>
-                                                <span style="font-size: 2em; font-weight: 600; color: #333; margin-right: 15px;">${item.char}</span>
-                                                <span style="font-size: 1.2em; color: #666;">Current Score: <strong style="color: ${item.score <= 20 ? '#f45c43' : '#FFC107'};">${item.score.toFixed(1)}%</strong></span>
+                                                <span style="font-size: 2.2em; font-weight: 600; color: #333; margin-right: 20px;">${item.char}</span>
+                                                <span style="font-size: 1.3em; color: #666;">Current Score: <strong style="color: ${item.score <= 20 ? '#f45c43' : '#FFC107'};">${item.score.toFixed(1)}%</strong></span>
                                             </div>
                                         </div>
-                                        <div style="margin-top: 10px;">
-                                            <a href="${item.url}" style="color: #667eea; font-size: 1.1em; font-weight: 600; text-decoration: none; display: inline-block; padding: 8px 16px; background: rgba(102, 126, 234, 0.1); border-radius: 5px; border: 2px solid #667eea;">
-                                                ▶ Click here to watch video
-                                            </a>
-                                        </div>
-                                        <div style="margin-top: 8px; font-size: 0.85em; color: #999; word-break: break-all;">
+                                        <div style="margin-top: 12px; font-size: 1em; color: #667eea; word-break: break-all; font-weight: 600; line-height: 1.6;">
                                             ${item.url}
                                         </div>
                                     </div>
@@ -2557,24 +2552,6 @@
                         videoY += availableHeight;
                         videoRemaining -= availableHeight;
                     }
-                    
-                    // Now add clickable link annotations on top of the link areas
-                    // We need to calculate approximate positions based on the layout
-                    const linkStartY = 120; // Approximate starting Y position in mm
-                    const linkSpacing = 35; // Approximate spacing between links in mm
-                    
-                    charactersNeedingVideos.forEach((item, index) => {
-                        const linkY = linkStartY + (index * linkSpacing);
-                        const pageIndex = Math.floor(linkY / pageHeight);
-                        const yOnPage = (linkY % pageHeight);
-                        
-                        // Set to the correct page
-                        if (pageIndex < pdf.internal.pages.length - 1) {
-                            pdf.setPage(pdf.internal.pages.length - charactersNeedingVideos.length + pageIndex);
-                            // Add invisible clickable rectangle over the link button area
-                            pdf.link(40, yOnPage, 80, 10, { url: item.url });
-                        }
-                    });
                     
                 } else {
                     // Add a page saying no videos needed using HTML rendering
