@@ -2105,6 +2105,129 @@
             
             return `<div style="line-height: 1.8;">${insights.join('<br>')}</div>`;
         }
+        
+        // NEW FUNCTION FOR PDF - WITHOUT VIDEO LINKS
+        function generateInsightsForPDF(data, mode, comparisonType = null) {
+            const stats = data.statistics;
+            const insights = [];
+            const isDaily = mode === 'daily';
+            
+            insights.push('<div style="background: linear-gradient(135deg, rgba(235, 51, 73, 0.1) 0%, rgba(244, 92, 67, 0.1) 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f45c43; font-weight: 600; color: #f45c43; font-size: 1.1em; text-align: center;">🎯 <strong>Remember:</strong> Prioritize RED and YELLOW characters for maximum improvement!</div>');
+            
+            let currentAverage = stats.endAverage;
+            if (isDaily) {
+                const weekIndex = getDailyWeekIndex(data);
+                const weekScores = [];
+                data.characters.forEach(char => {
+                    const score = data.scores[char][weekIndex];
+                    if (score !== null && score !== undefined) {
+                        weekScores.push(score);
+                    }
+                });
+                currentAverage = weekScores.length > 0 
+                    ? weekScores.reduce((sum, score) => sum + score, 0) / weekScores.length 
+                    : 0;
+            }
+            
+            if (currentAverage >= 8) {
+                insights.push('🌟 <strong>Excellent Performance!</strong> Current average is 8.0/10 or higher.');
+            } else if (currentAverage >= 6) {
+                insights.push('✅ <strong>Good Performance!</strong> Solid progress showing.');
+            } else {
+                insights.push('📚 <strong>Room for Improvement.</strong> Focus on practice for better results.');
+            }
+            
+            if (stats.masteryRate === 100) {
+                insights.push('🎉 <strong>Perfect Mastery!</strong> All characters scored 10/10.');
+            } else if (stats.masteryRate >= 80) {
+                insights.push(`🎯 <strong>High Mastery Rate!</strong> ${stats.masteredCount} out of ${stats.totalCharacters} characters mastered.`);
+            }
+            
+            insights.push('<br><strong style="font-size: 1.1em;">⚠️ Priority Focus Areas (scores below 60%):</strong>');
+            
+            let allScoresData = [];
+            if (isDaily) {
+                const weekIndex = getDailyWeekIndex(data);
+                allScoresData = data.characters
+                    .map(char => ({
+                        char: char,
+                        end: data.scores[char][weekIndex]
+                    }))
+                    .filter(item => item.end !== null && item.end !== undefined)
+                    .sort((a, b) => a.end - b.end);
+            } else {
+                allScoresData = Object.entries(data.characterImprovements)
+                    .filter(([char, data]) => data.hasData)
+                    .map(([char, data]) => ({char, ...data}))
+                    .sort((a, b) => a.end - b.end);
+            }
+            
+            const priorityCharacters = allScoresData.filter(item => item.end < 6);
+            
+            if (priorityCharacters.length > 0) {
+                const redCharacters = priorityCharacters.filter(item => item.end <= 4);
+                const yellowCharacters = priorityCharacters.filter(item => item.end > 4 && item.end < 6);
+                
+                if (redCharacters.length > 0) {
+                    insights.push(`<strong style="color: #f45c43;">🔴 RED ZONE (0.0-4.0) - ${redCharacters.length} characters need URGENT attention:</strong>`);
+                    redCharacters.forEach((item, index) => {
+                        insights.push(`${index + 1}. <strong>${item.char}</strong> - ${item.end.toFixed(1)}/10`);
+                    });
+                } else {
+                    insights.push(`<strong style="color: #f45c43;">🔴 RED ZONE (0.0-4.0):</strong> None for now! Keep it up!`);
+                }
+                
+                if (yellowCharacters.length > 0) {
+                    insights.push(`<strong style="color: #FFC107;">🟡 YELLOW ZONE (4.1-5.9) - ${yellowCharacters.length} characters need focused practice:</strong>`);
+                    yellowCharacters.forEach((item, index) => {
+                        insights.push(`${index + 1}. <strong>${item.char}</strong> - ${item.end.toFixed(1)}/10`);
+                    });
+                } else {
+                    insights.push(`<strong style="color: #FFC107;">🟡 YELLOW ZONE (4.1-5.9):</strong> None for now! Keep it up!`);
+                }
+            } else {
+                insights.push(`<strong style="color: #f45c43;">🔴 RED ZONE (0.0-4.0):</strong> None for now! Keep it up!`);
+                insights.push(`<strong style="color: #FFC107;">🟡 YELLOW ZONE (4.1-5.9):</strong> None for now! Keep it up!`);
+            }
+            
+            const reviewCharacters = allScoresData.filter(item => item.end >= 6 && item.end < 10);
+            
+            if (reviewCharacters.length > 0) {
+                insights.push('<br><strong style="font-size: 1.1em;">📚 Regular Review (60-99%, maintain progress):</strong>');
+                
+                const greenChars = reviewCharacters.filter(item => item.end >= 8);
+                if (greenChars.length > 0) {
+                    insights.push(`<strong style="color: #38ef7d;">🟢 GREEN ZONE (8.0-9.9) - ${greenChars.length} characters performing well:</strong>`);
+                    greenChars.forEach((item, index) => {
+                        insights.push(`${index + 1}. <strong>${item.char}</strong> - ${item.end.toFixed(1)}/10`);
+                    });
+                } else {
+                    insights.push(`<strong style="color: #38ef7d;">🟢 GREEN ZONE (8.0-9.9):</strong> None for now! Keep it up!`);
+                }
+                
+                const lightYellowChars = reviewCharacters.filter(item => item.end >= 6 && item.end < 8);
+                if (lightYellowChars.length > 0) {
+                    insights.push(`<strong style="color: #FFC107;">🟡 LIGHT YELLOW ZONE (6.0-7.9) - ${lightYellowChars.length} characters close to mastery:</strong>`);
+                    lightYellowChars.forEach((item, index) => {
+                        insights.push(`${index + 1}. <strong>${item.char}</strong> - ${item.end.toFixed(1)}/10`);
+                    });
+                } else {
+                    insights.push(`<strong style="color: #FFC107;">🟡 LIGHT YELLOW ZONE (6.0-7.9):</strong> None for now! Keep it up!`);
+                }
+            } else {
+                insights.push('<br><strong style="font-size: 1.1em;">📚 Regular Review (60-99%, maintain progress):</strong>');
+                insights.push(`<strong style="color: #38ef7d;">🟢 GREEN ZONE (8.0-9.9):</strong> None for now! Keep it up!`);
+                insights.push(`<strong style="color: #FFC107;">🟡 LIGHT YELLOW ZONE (6.0-7.9):</strong> None for now! Keep it up!`);
+            }
+            
+            const masteredCharacters = allScoresData.filter(item => item.end === 10);
+            if (masteredCharacters.length > 0) {
+                insights.push('<br><strong>🥇 Mastered Characters (100%, perfect score):</strong>');
+                insights.push(`${masteredCharacters.length} character(s) achieved mastery: ${masteredCharacters.map(item => item.char).join(', ')}`);
+            }
+            
+            return `<div style="line-height: 1.8;">${insights.join('<br>')}</div>`;
+        }
 
         function createDailyCharacterChart(data) {
             const canvas = document.getElementById('dailyCharacterChart');
