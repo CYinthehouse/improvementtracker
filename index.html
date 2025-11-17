@@ -1279,14 +1279,23 @@
                         <strong>🌟 You've been working hard. Keep it up!</strong><br><br>
                         <strong>Day 1 to now:</strong> ${improvements.fromDay1 >= 0 ? '+' : ''}${improvements.fromDay1}% Improvement!<br>
                         ${improvements.topDay1.length > 0 ? `Top 3 improved: ${improvements.topDay1.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}<br>` : ''}<br>
-                        <strong>Past month:</strong> ${improvements.fromMonth >= 0 ? '+' : ''}${improvements.fromMonth}% Improvement!<br>
-                        ${improvements.topMonth.length > 0 ? `Top 3 improved: ${improvements.topMonth.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}<br>` : ''}<br>
+                        ${data.weeks.length >= 4 ? `<strong>Past month:</strong> ${improvements.fromMonth >= 0 ? '+' : ''}${improvements.fromMonth}% Improvement!<br>
+                        ${improvements.topMonth.length > 0 ? `Top 3 improved: ${improvements.topMonth.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}<br>` : ''}<br>` : ''}
                         <strong>Past week:</strong> ${improvements.fromWeek >= 0 ? '+' : ''}${improvements.fromWeek}% Improvement!<br>
                         ${improvements.topWeek.length > 0 ? `Top 3 improved: ${improvements.topWeek.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}` : ''}
                     </div>
                     ` : ''}
                     
                     <div class="stats-grid">
+                        ${data.weeks.length > 1 ? `
+                        <div class="stat-card ${getScoreColor(stats.startAverage)}">
+                            <div class="label">Starting Score (Week 1)</div>
+                            <div class="value">${(stats.startAverage * 10).toFixed(1)}%</div>
+                            <div class="change">Day 1 Baseline</div>
+                            <div class="description">Average score on first week</div>
+                        </div>
+                        ` : ''}
+                        
                         <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
                             <div class="label">Latest Overall Score</div>
                             <div class="value">${(stats.endAverage * 10).toFixed(1)}%</div>
