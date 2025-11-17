@@ -782,7 +782,6 @@
             document.getElementById('processBtn').disabled = true;
             
             studentsData = {};
-            allReportsGenerated = {};
             
             let filesProcessed = 0;
             let successfulFiles = 0;
@@ -814,11 +813,6 @@
                                 }
                                 
                                 document.querySelector('.empty-state').style.display = 'none';
-                                
-                                // Generate unified reports for all students
-                                Object.keys(studentsData).forEach(studentName => {
-                                    generateUnifiedReport(studentName);
-                                });
 
                                 displayStudentTabs();
                                 if (Object.keys(studentsData).length > 0) {
@@ -1037,256 +1031,6 @@
             return processed;
         }
 
-        function generateTopImprovementsTable(data, comparisonType) {
-            const currentIndex = data.weeks.length - 1;
-            let compareIndex = 0;
-            let comparisonTitle = '';
-            
-            if (comparisonType === 'day1') {
-                compareIndex = 0;
-                comparisonTitle = `${data.weeks[0]} vs ${data.weeks[currentIndex]}`;
-            } else if (comparisonType === 'month') {
-                compareIndex = Math.max(0, currentIndex - 4);
-                comparisonTitle = `${data.weeks[compareIndex]} vs ${data.weeks[currentIndex]}`;
-            } else if (comparisonType === 'week') {
-                compareIndex = Math.max(0, currentIndex - 1);
-                comparisonTitle = `${data.weeks[compareIndex]} vs ${data.weeks[currentIndex]}`;
-            }
-            
-            const improvements = [];
-            data.characters.forEach(char => {
-                const scores = data.scores[char];
-                const oldScore = scores[compareIndex];
-                const newScore = scores[currentIndex];
-                
-                if (oldScore !== null && newScore !== null) {
-                    improvements.push({
-                        char: char,
-                        old: oldScore,
-                        new: newScore,
-                        change: newScore - oldScore
-                    });
-                }
-            });
-            
-            improvements.sort((a, b) => b.change - a.change);
-            
-            return `
-                <div class="details-section" style="margin-top: 30px;">
-                    <div class="details-title">📊 Top 5 Improvements (Vs. Day 1)</div>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                                <th style="padding: 12px; text-align: left;">Rank</th>
-                                <th style="padding: 12px; text-align: left;">Character</th>
-                                <th style="padding: 12px; text-align: center;">Previous</th>
-                                <th style="padding: 12px; text-align: center;">Current</th>
-                                <th style="padding: 12px; text-align: center;">Percentage Change</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${improvements.slice(0, 5).map((item, index) => `
-                                <tr style="background: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
-                                    <td style="padding: 12px; font-weight: bold;">${index + 1}</td>
-                                    <td style="padding: 12px; font-size: 1.5em;">${item.char}</td>
-                                    <td style="padding: 12px; text-align: center;">${item.old.toFixed(1)}/10</td>
-                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${getScoreColorHex(item.new)};">${item.new.toFixed(1)}/10</td>
-                                    <td style="padding: 12px; text-align: center; font-weight: bold; color: ${item.change >= 0 ? '#06BA63' : '#f45c43'};">
-                                        ${item.change >= 0 ? '+' : ''}${(item.change * 10).toFixed(1)}%
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        }
-
-        function generateUnifiedReport(studentName) {
-            const data = studentsData[studentName];
-            if (!data) return;
-
-            const stats = data.statistics;
-            let weekWithDataIndex = getDailyWeekIndex(data);
-            let weekWithDataName = data.weeks[weekWithDataIndex];
-            
-            const weekScores = [];
-            data.characters.forEach(char => {
-                const score = data.scores[char][weekWithDataIndex];
-                if (score !== null && score !== undefined) {
-                    weekScores.push(score);
-                }
-            });
-            
-            const dailyAverage = weekScores.length > 0 
-                ? weekScores.reduce((sum, score) => sum + score, 0) / weekScores.length 
-                : 0;
-            
-            const masteredCount = weekScores.filter(score => score === 10).length;
-            const masteryRate = weekScores.length > 0 ? (masteredCount / weekScores.length * 100) : 0;
-            
-            const evaluatorName = document.getElementById('evaluatorName').value.trim() || 'Not specified';
-            const improvements = calculateComparisonMetrics(data);
-            
-            // Calculate comparison percentages
-            const currentIndex = data.weeks.length - 1;
-            const weekIndex = Math.max(0, currentIndex - 1);
-            const monthIndex = Math.max(0, currentIndex - 4);
-            const day1Index = 0;
-            
-            function getAverageForWeek(weekIdx) {
-                let sum = 0;
-                let count = 0;
-                data.characters.forEach(char => {
-                    const score = data.scores[char][weekIdx];
-                    if (score !== null && score !== undefined) {
-                        sum += score;
-                        count++;
-                    }
-                });
-                return count > 0 ? sum / count : 0;
-            }
-            
-            const currentAvg = getAverageForWeek(currentIndex);
-            const weekAgoAvg = getAverageForWeek(weekIndex);
-            const monthAgoAvg = getAverageForWeek(monthIndex);
-            const day1Avg = getAverageForWeek(day1Index);
-            
-            const weekChange = ((currentAvg - weekAgoAvg) * 10).toFixed(1);
-            const monthChange = ((currentAvg - monthAgoAvg) * 10).toFixed(1);
-            const day1Change = ((currentAvg - day1Avg) * 10).toFixed(1);
-
-            allReportsGenerated[studentName] = `
-                <div class="student-report active" data-student="${data.name}">
-                    <!-- Evaluator Name -->
-                    <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid #667eea;">
-                        <div style="text-align: center; color: #667eea; font-weight: 600; font-size: 1.5em;">
-                            Evaluated By: ${evaluatorName}
-                        </div>
-                    </div>
-                    
-                    <!-- DAILY SECTION -->
-                    <!-- Improvement Summary -->
-                    <div class="improvement-summary">
-                        <strong>🌟 You've been working hard. Keep it up!</strong><br><br>
-                        <strong>Day 1 to now:</strong> ${improvements.fromDay1 >= 0 ? '+' : ''}${improvements.fromDay1}% Improvement!<br>
-                        ${improvements.topDay1.length > 0 ? `Top 3 improved: ${improvements.topDay1.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}<br>` : ''}<br>
-                        <strong>Past month:</strong> ${improvements.fromMonth >= 0 ? '+' : ''}${improvements.fromMonth}% Improvement!<br>
-                        ${improvements.topMonth.length > 0 ? `Top 3 improved: ${improvements.topMonth.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}<br>` : ''}<br>
-                        <strong>Past week:</strong> ${improvements.fromWeek >= 0 ? '+' : ''}${improvements.fromWeek}% Improvement!<br>
-                        ${improvements.topWeek.length > 0 ? `Top 3 improved: ${improvements.topWeek.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}` : ''}
-                    </div>
-                    
-                    <!-- Character Performance Breakdown Chart -->
-                    <div class="chart-container" style="height: 820px; margin-top: 30px;">
-                        <div class="chart-title">
-                            <span class="emoji">📊</span>
-                            Character Performance Breakdown
-                        </div>
-                        <div style="position: relative; height: 740px;">
-                            <canvas id="dailyCharacterChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <!-- CONSECUTIVE SECTION -->
-                    <!-- Stats Grid -->
-                    <div class="stats-grid" style="margin-top: 40px;">
-                        <div class="stat-card ${getScoreColor(stats.startAverage)}">
-                            <div class="label">Starting Average</div>
-                            <div class="value">${stats.startAverage.toFixed(1)}/10</div>
-                            <div class="change">First Week Baseline</div>
-                            <div class="description">Average score on first week</div>
-                        </div>
-                        
-                        <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
-                            <div class="label">Current Average</div>
-                            <div class="value">${stats.endAverage.toFixed(1)}/10</div>
-                            <div class="change">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)} Total</div>
-                            <div class="description">Average score on latest week</div>
-                        </div>
-                        
-                        <div class="stat-card gold">
-                            <div class="label">Overall Mastery<br>(Characters Mastered)</div>
-                            <div class="value">${stats.masteredCount}/${stats.totalCharacters}</div>
-                            <div class="change">${stats.masteryRate.toFixed(1)}% Mastery Rate</div>
-                            <div class="description">Characters achieving 10/10</div>
-                        </div>
-                        
-                        <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
-                            <div class="label">Total Improvement</div>
-                            <div class="value">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)}</div>
-                            <div class="change">From First to Last Week</div>
-                            <div class="description">Overall progress made</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Consecutive Progress Chart -->
-                    <div class="chart-container" style="height: 350px; margin-top: 30px;">
-                        <div class="chart-title">
-                            <span class="emoji">📈</span>
-                            Consecutive Progress Overview
-                        </div>
-                        <div style="position: relative; height: 270px;">
-                            <canvas id="progressChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <!-- COMPARISON SECTION -->
-                    <!-- Week Comparison Chart -->
-                    <div class="chart-container" style="height: 870px; margin-top: 40px;">
-                        <div class="chart-title">
-                            <span class="emoji">📊</span>
-                            Vs. 1 Week Ago (${weekChange >= 0 ? '+' : ''}${weekChange}% change)
-                        </div>
-                        <div style="position: relative; height: 790px;">
-                            <canvas id="comparisonBarChartWeek"></canvas>
-                        </div>
-                    </div>
-                    
-                    <!-- Month Comparison Chart -->
-                    <div class="chart-container" style="height: 870px; margin-top: 30px;">
-                        <div class="chart-title">
-                            <span class="emoji">📊</span>
-                            Vs. 1 Month Ago (${monthChange >= 0 ? '+' : ''}${monthChange}% change)
-                        </div>
-                        <div style="position: relative; height: 790px;">
-                            <canvas id="comparisonBarChartMonth"></canvas>
-                        </div>
-                    </div>
-                    
-                    <!-- Day 1 Comparison Chart -->
-                    <div class="chart-container" style="height: 870px; margin-top: 30px;">
-                        <div class="chart-title">
-                            <span class="emoji">📊</span>
-                            Vs. Day 1 (${day1Change >= 0 ? '+' : ''}${day1Change}% change)
-                        </div>
-                        <div style="position: relative; height: 790px;">
-                            <canvas id="comparisonBarChartDay1"></canvas>
-                        </div>
-                    </div>
-                    
-                    <!-- Top 5 Improvements Table (Day 1 only) -->
-                    ${generateTopImprovementsTable(data, 'day1')}
-                    
-                    <!-- BACK TO DAILY CONTENT -->
-                    <!-- Detailed Character Analysis -->
-                    <div class="details-section" style="margin-top: 40px;">
-                        <div class="details-title">📊 Detailed Character Analysis</div>
-                        <div class="character-grid">
-                            ${generateCharacterCards(data, 'daily')}
-                        </div>
-                    </div>
-                    
-                    <!-- Key Insights & Recommendations -->
-                    <div class="details-section">
-                        <div class="details-title">💡 Key Insights & Recommendations</div>
-                        ${generateInsights(data, 'daily')}
-                        ${generateTeacherRecommendations(data)}
-                    </div>
-                </div>
-            `;
-        }
-
         function getScoreColor(score) {
             if (score === 10) return 'gold';
             if (score >= 8) return 'high';
@@ -1348,16 +1092,18 @@
                     if (document.getElementById('dailyCharacterChart')) {
                         createDailyCharacterChart(data);
                     }
-                    if (document.getElementById('progressChart')) {
+                    // Only render progress chart if multiple weeks
+                    if (document.getElementById('progressChart') && data.weeks.length > 1) {
                         createProgressChart(data);
                     }
-                    if (document.getElementById('comparisonWeekChart')) {
+                    // Only render comparison charts if they exist
+                    if (document.getElementById('comparisonWeekChart') && data.weeks.length > 1) {
                         createComparisonBarChart(data, 'week', 'comparisonWeekChart');
                     }
-                    if (document.getElementById('comparisonMonthChart')) {
+                    if (document.getElementById('comparisonMonthChart') && data.weeks.length > 4) {
                         createComparisonBarChart(data, 'month', 'comparisonMonthChart');
                     }
-                    if (document.getElementById('comparisonDay1Chart')) {
+                    if (document.getElementById('comparisonDay1Chart') && data.weeks.length > 1) {
                         createComparisonBarChart(data, 'day1', 'comparisonDay1Chart');
                     }
                 }, 50);
@@ -1491,7 +1237,7 @@
             const monthChangePercent = ((currentAvg - monthAgoAvg) * 10).toFixed(1);
             const day1ChangePercent = ((currentAvg - day1Avg) * 10).toFixed(1);
             
-            // Generate comparison improvements for Day 1
+            // Generate comparison improvements for Day 1 or just top scores for single week
             const day1Improvements = [];
             data.characters.forEach(char => {
                 const scores = data.scores[char];
@@ -1507,7 +1253,13 @@
                     });
                 }
             });
-            day1Improvements.sort((a, b) => b.change - a.change);
+            
+            // Sort by improvement if multiple weeks, or by highest score if single week
+            if (data.weeks.length === 1) {
+                day1Improvements.sort((a, b) => b.new - a.new);
+            } else {
+                day1Improvements.sort((a, b) => b.change - a.change);
+            }
 
             return `
                 <div class="student-report active" data-student="${data.name}">
@@ -1522,6 +1274,7 @@
                         <p style="font-size: 1.3em; opacity: 0.9;">${weekWithDataName}</p>
                     </div>
                     
+                    ${data.weeks.length > 1 ? `
                     <div class="improvement-summary">
                         <strong>🌟 You've been working hard. Keep it up!</strong><br><br>
                         <strong>Day 1 to now:</strong> ${improvements.fromDay1 >= 0 ? '+' : ''}${improvements.fromDay1}% Improvement!<br>
@@ -1531,18 +1284,12 @@
                         <strong>Past week:</strong> ${improvements.fromWeek >= 0 ? '+' : ''}${improvements.fromWeek}% Improvement!<br>
                         ${improvements.topWeek.length > 0 ? `Top 3 improved: ${improvements.topWeek.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}` : ''}
                     </div>
+                    ` : ''}
                     
                     <div class="stats-grid">
-                        <div class="stat-card ${getScoreColor(stats.startAverage)}">
-                            <div class="label">Starting Average</div>
-                            <div class="value">${stats.startAverage.toFixed(1)}/10</div>
-                            <div class="change">First Week Baseline</div>
-                            <div class="description">Average score on first week</div>
-                        </div>
-                        
                         <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
-                            <div class="label">Current Average</div>
-                            <div class="value">${stats.endAverage.toFixed(1)}/10</div>
+                            <div class="label">Latest Overall Score</div>
+                            <div class="value">${(stats.endAverage * 10).toFixed(1)}%</div>
                             <div class="change">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)} points</div>
                             <div class="description">Average score on latest week</div>
                         </div>
@@ -1554,11 +1301,11 @@
                             <div class="description">Characters achieving 10/10</div>
                         </div>
                         
-                        <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
+                        <div class="stat-card ${data.weeks.length === 1 ? '' : (stats.totalImprovement >= 0 ? 'positive' : 'negative')}" style="${data.weeks.length === 1 ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);' : ''}">
                             <div class="label">Total Improvement</div>
-                            <div class="value">${stats.totalImprovement >= 0 ? '+' : ''}${(stats.totalImprovement * 10).toFixed(1)}%</div>
-                            <div class="change">From First to Last Week</div>
-                            <div class="description">Overall progress made</div>
+                            <div class="value">${data.weeks.length === 1 ? 'N/A' : (stats.totalImprovement >= 0 ? '+' : '') + (stats.totalImprovement * 10).toFixed(1) + '%'}</div>
+                            <div class="change">${data.weeks.length === 1 ? 'Only one week of data' : 'From First to Last Week'}</div>
+                            <div class="description">${data.weeks.length === 1 ? 'Need multiple weeks for comparison' : 'Overall progress made'}</div>
                         </div>
                     </div>
                     
@@ -1572,6 +1319,7 @@
                         </div>
                     </div>
                     
+                    ${data.weeks.length > 1 ? `
                     <div class="chart-container" style="height: 350px;">
                         <div class="chart-title">
                             <span class="emoji">📈</span>
@@ -1581,7 +1329,9 @@
                             <canvas id="progressChart"></canvas>
                         </div>
                     </div>
+                    ` : ''}
                     
+                    ${data.weeks.length > 1 ? `
                     <div class="chart-container" style="height: 870px;">
                         <div class="chart-title">
                             <span class="emoji">📊</span>
@@ -1591,7 +1341,9 @@
                             <canvas id="comparisonWeekChart"></canvas>
                         </div>
                     </div>
+                    ` : ''}
                     
+                    ${data.weeks.length > 4 ? `
                     <div class="chart-container" style="height: 870px;">
                         <div class="chart-title">
                             <span class="emoji">📊</span>
@@ -1601,7 +1353,9 @@
                             <canvas id="comparisonMonthChart"></canvas>
                         </div>
                     </div>
+                    ` : ''}
                     
+                    ${data.weeks.length > 1 ? `
                     <div class="chart-container" style="height: 870px;">
                         <div class="chart-title">
                             <span class="emoji">📊</span>
@@ -1611,17 +1365,18 @@
                             <canvas id="comparisonDay1Chart"></canvas>
                         </div>
                     </div>
+                    ` : ''}
                     
                     <div class="details-section">
-                        <div class="details-title">📊 Top 5 Improvements (vs Day 1)</div>
+                        <div class="details-title">📊 Top 5 Scores</div>
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                                     <th style="padding: 12px; text-align: left;">Rank</th>
                                     <th style="padding: 12px; text-align: left;">Character</th>
-                                    <th style="padding: 12px; text-align: center;">Day 1</th>
+                                    ${data.weeks.length > 1 ? '<th style="padding: 12px; text-align: center;">Day 1</th>' : ''}
                                     <th style="padding: 12px; text-align: center;">Current</th>
-                                    <th style="padding: 12px; text-align: center;">Percentage Change</th>
+                                    ${data.weeks.length > 1 ? '<th style="padding: 12px; text-align: center;">Percentage Change</th>' : ''}
                                 </tr>
                             </thead>
                             <tbody>
@@ -1629,11 +1384,13 @@
                                     <tr style="background: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
                                         <td style="padding: 12px; font-weight: bold;">${index + 1}</td>
                                         <td style="padding: 12px; font-size: 1.5em;">${item.char}</td>
-                                        <td style="padding: 12px; text-align: center;">${item.old.toFixed(1)}/10</td>
+                                        ${data.weeks.length > 1 ? `<td style="padding: 12px; text-align: center;">${item.old.toFixed(1)}/10</td>` : ''}
                                         <td style="padding: 12px; text-align: center; font-weight: bold; color: ${getScoreColorHex(item.new)};">${item.new.toFixed(1)}/10</td>
+                                        ${data.weeks.length > 1 ? `
                                         <td style="padding: 12px; text-align: center; font-weight: bold; color: ${item.change >= 0 ? '#06BA63' : '#f45c43'};">
                                             ${item.change >= 0 ? '+' : ''}${(item.change * 10).toFixed(1)}%
                                         </td>
+                                        ` : ''}
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -1651,263 +1408,6 @@
                         <div class="details-title">💡 Key Insights & Recommendations</div>
                         ${generateInsights(data, 'daily')}
                         ${generateTeacherRecommendations(data)}
-                    </div>
-                </div>
-            `;
-        }
-
-        function generateDailyReport(data) {
-            const stats = data.statistics;
-            let weekWithDataIndex = getDailyWeekIndex(data);
-            let weekWithDataName = data.weeks[weekWithDataIndex];
-            
-            const weekScores = [];
-            data.characters.forEach(char => {
-                const score = data.scores[char][weekWithDataIndex];
-                if (score !== null && score !== undefined) {
-                    weekScores.push(score);
-                }
-            });
-            
-            const dailyAverage = weekScores.length > 0 
-                ? weekScores.reduce((sum, score) => sum + score, 0) / weekScores.length 
-                : 0;
-            
-            const masteredCount = weekScores.filter(score => score === 10).length;
-            const masteryRate = weekScores.length > 0 ? (masteredCount / weekScores.length * 100) : 0;
-            
-            const evaluatorName = document.getElementById('evaluatorName').value.trim() || 'Not specified';
-            const improvements = calculateComparisonMetrics(data);
-
-            return `
-                <div class="student-report active" data-student="${data.name}">
-                    <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid #667eea;">
-                        <div style="text-align: center; color: #667eea; font-weight: 600; font-size: 1.5em;">
-                            Evaluated By: ${evaluatorName}
-                        </div>
-                    </div>
-                    
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px; text-align: center;">
-                        <h2 style="font-size: 2em; margin-bottom: 10px;">📅 Daily Progress Report</h2>
-                        <p style="font-size: 1.3em; opacity: 0.9;">${weekWithDataName}</p>
-                    </div>
-                    
-                    <div class="improvement-summary">
-                        <strong>🌟 You've been working hard. Keep it up!</strong><br><br>
-                        <strong>Day 1 to now:</strong> ${improvements.fromDay1 >= 0 ? '+' : ''}${improvements.fromDay1}% Improvement!<br>
-                        ${improvements.topDay1.length > 0 ? `Top 3 improved: ${improvements.topDay1.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}<br>` : ''}<br>
-                        <strong>Past month:</strong> ${improvements.fromMonth >= 0 ? '+' : ''}${improvements.fromMonth}% Improvement!<br>
-                        ${improvements.topMonth.length > 0 ? `Top 3 improved: ${improvements.topMonth.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}<br>` : ''}<br>
-                        <strong>Past week:</strong> ${improvements.fromWeek >= 0 ? '+' : ''}${improvements.fromWeek}% Improvement!<br>
-                        ${improvements.topWeek.length > 0 ? `Top 3 improved: ${improvements.topWeek.map(item => `${item.char} (+${(item.improvement * 10).toFixed(1)}%)`).join(', ')}` : ''}
-                    </div>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card ${getScoreColor(dailyAverage)}">
-                            <div class="label">Daily Average</div>
-                            <div class="value">${dailyAverage.toFixed(1)}/10</div>
-                            <div class="change">Overall Performance</div>
-                            <div class="description">Average score across all characters</div>
-                        </div>
-                        
-                        <div class="stat-card gold">
-                            <div class="label">Overall Mastery<br>(Characters Mastered)</div>
-                            <div class="value">${masteredCount}/${weekScores.length}</div>
-                            <div class="change">${masteryRate.toFixed(1)}% Mastery Rate</div>
-                            <div class="description">Characters achieving 10/10</div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-container" style="height: 820px;">
-                        <div class="chart-title">
-                            <span class="emoji">📊</span>
-                            Character Performance Breakdown
-                        </div>
-                        <div style="position: relative; height: 740px;">
-                            <canvas id="dailyCharacterChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <div class="details-section">
-                        <div class="details-title">📊 Detailed Character Analysis</div>
-                        <div class="character-grid">
-                            ${generateCharacterCards(data, 'daily')}
-                        </div>
-                    </div>
-                    
-                    <div class="details-section">
-                        <div class="details-title">💡 Key Insights & Recommendations</div>
-                        ${generateInsights(data, 'daily')}
-                        ${generateTeacherRecommendations(data)}
-                    </div>
-                </div>
-            `;
-        }
-
-        function generateConsecutiveReport(data) {
-            const stats = data.statistics;
-            const evaluatorName = document.getElementById('evaluatorName').value.trim() || 'Not specified';
-            
-            return `
-                <div class="student-report active" data-student="${data.name}">
-                    <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid #667eea;">
-                        <div style="text-align: center; color: #667eea; font-weight: 600; font-size: 1.5em;">
-                            Evaluated By: ${evaluatorName}
-                        </div>
-                    </div>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card ${getScoreColor(stats.startAverage)}">
-                            <div class="label">Starting Average</div>
-                            <div class="value">${stats.startAverage.toFixed(1)}/10</div>
-                            <div class="change">First Week Baseline</div>
-                            <div class="description">Average score on first week</div>
-                        </div>
-                        
-                        <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
-                            <div class="label">Current Average</div>
-                            <div class="value">${stats.endAverage.toFixed(1)}/10</div>
-                            <div class="change">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)} Total</div>
-                            <div class="description">Average score on latest week</div>
-                        </div>
-                        
-                        <div class="stat-card gold">
-                            <div class="label">Overall Mastery<br>(Characters Mastered)</div>
-                            <div class="value">${stats.masteredCount}/${stats.totalCharacters}</div>
-                            <div class="change">${stats.masteryRate.toFixed(1)}% Mastery Rate</div>
-                            <div class="description">Characters achieving 10/10</div>
-                        </div>
-                        
-                        <div class="stat-card ${stats.totalImprovement >= 0 ? 'positive' : 'negative'}">
-                            <div class="label">Total Improvement</div>
-                            <div class="value">${stats.totalImprovement >= 0 ? '+' : ''}${stats.totalImprovement.toFixed(1)}</div>
-                            <div class="change">From First to Last Week</div>
-                            <div class="description">Overall progress made</div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-container" style="height: 350px;">
-                        <div class="chart-title">
-                            <span class="emoji">📈</span>
-                            Consecutive Progress Overview
-                        </div>
-                        <div style="position: relative; height: 270px;">
-                            <canvas id="progressChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function generateComparisonReport(data, comparisonType) {
-            const currentIndex = data.weeks.length - 1;
-            let compareIndex = 0;
-            let comparisonTitle = '';
-            
-            if (comparisonType === 'day1') {
-                compareIndex = 0;
-                comparisonTitle = `${data.weeks[0]} vs ${data.weeks[currentIndex]}`;
-            } else if (comparisonType === 'month') {
-                compareIndex = Math.max(0, currentIndex - 4);
-                comparisonTitle = `${data.weeks[compareIndex]} vs ${data.weeks[currentIndex]}`;
-            } else if (comparisonType === 'week') {
-                compareIndex = Math.max(0, currentIndex - 1);
-                comparisonTitle = `${data.weeks[compareIndex]} vs ${data.weeks[currentIndex]}`;
-            }
-            
-            const improvements = [];
-            data.characters.forEach(char => {
-                const scores = data.scores[char];
-                const oldScore = scores[compareIndex];
-                const newScore = scores[currentIndex];
-                
-                if (oldScore !== null && newScore !== null) {
-                    improvements.push({
-                        char: char,
-                        old: oldScore,
-                        new: newScore,
-                        change: newScore - oldScore
-                    });
-                }
-            });
-            
-            improvements.sort((a, b) => b.change - a.change);
-            
-            const avgOld = improvements.reduce((sum, item) => sum + item.old, 0) / improvements.length;
-            const avgNew = improvements.reduce((sum, item) => sum + item.new, 0) / improvements.length;
-            const avgChange = avgNew - avgOld;
-            
-            const evaluatorName = document.getElementById('evaluatorName').value.trim() || 'Not specified';
-
-            return `
-                <div class="student-report active" data-student="${data.name}">
-                    <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid #667eea;">
-                        <div style="text-align: center; color: #667eea; font-weight: 600; font-size: 1.5em;">
-                            Evaluated By: ${evaluatorName}
-                        </div>
-                    </div>
-                    
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px; text-align: center;">
-                        <h2 style="font-size: 2em; margin-bottom: 10px;">📊 Comparison Chart</h2>
-                        <p style="font-size: 1.3em; opacity: 0.9;">${comparisonTitle}</p>
-                    </div>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card ${getScoreColor(avgOld)}">
-                            <div class="label">Previous Average</div>
-                            <div class="value">${avgOld.toFixed(1)}/10</div>
-                            <div class="change">${data.weeks[compareIndex]}</div>
-                        </div>
-                        
-                        <div class="stat-card ${getScoreColor(avgNew)}">
-                            <div class="label">Current Average</div>
-                            <div class="value">${avgNew.toFixed(1)}/10</div>
-                            <div class="change">${data.weeks[currentIndex]}</div>
-                        </div>
-                        
-                        <div class="stat-card ${avgChange >= 0 ? 'positive' : 'negative'}">
-                            <div class="label">Change</div>
-                            <div class="value">${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(1)}</div>
-                            <div class="change">Overall Improvement</div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-container" style="height: 870px;">
-                        <div class="chart-title">
-                            <span class="emoji">📊</span>
-                            Character Comparison: ${comparisonTitle}
-                        </div>
-                        <div style="position: relative; height: 790px;">
-                            <canvas id="comparisonBarChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <div class="details-section">
-                        <div class="details-title">📊 Top 5 Improvements</div>
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                                    <th style="padding: 12px; text-align: left;">Rank</th>
-                                    <th style="padding: 12px; text-align: left;">Character</th>
-                                    <th style="padding: 12px; text-align: center;">Previous</th>
-                                    <th style="padding: 12px; text-align: center;">Current</th>
-                                    <th style="padding: 12px; text-align: center;">Percentage Change</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${improvements.slice(0, 5).map((item, index) => `
-                                    <tr style="background: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
-                                        <td style="padding: 12px; font-weight: bold;">${index + 1}</td>
-                                        <td style="padding: 12px; font-size: 1.5em;">${item.char}</td>
-                                        <td style="padding: 12px; text-align: center;">${item.old.toFixed(1)}/10</td>
-                                        <td style="padding: 12px; text-align: center; font-weight: bold; color: ${getScoreColorHex(item.new)};">${item.new.toFixed(1)}/10</td>
-                                        <td style="padding: 12px; text-align: center; font-weight: bold; color: ${item.change >= 0 ? '#06BA63' : '#f45c43'};">
-                                            ${item.change >= 0 ? '+' : ''}${(item.change * 10).toFixed(1)}%
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             `;
@@ -2283,48 +1783,6 @@
                     plugins: {
                         legend: { display: false }
                     }
-                }
-            });
-        }
-
-        function createImprovementChart(data) {
-            const canvas = document.getElementById('improvementChart');
-            if (!canvas) return;
-            
-            const ctx = canvas.getContext('2d');
-            
-            const topImprovements = Object.entries(data.characterImprovements)
-                .filter(([char, data]) => data.hasData)
-                .sort((a, b) => b[1].improvement - a[1].improvement)
-                .slice(0, 5);
-            
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: topImprovements.map(([char, _]) => char),
-                    datasets: [{
-                        label: 'Improvement',
-                        data: topImprovements.map(([_, data]) => data.improvement),
-                        backgroundColor: topImprovements.map(([_, data]) => 
-                            data.improvement >= 0 ? 'rgba(56, 239, 125, 0.8)' : 'rgba(244, 92, 67, 0.8)'
-                        ),
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return (value >= 0 ? '+' : '') + value;
-                                }
-                            }
-                        }
-                    },
-                    plugins: { legend: { display: false } }
                 }
             });
         }
